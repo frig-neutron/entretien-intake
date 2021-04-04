@@ -1,6 +1,9 @@
 intake = require("../appscript/Code")
 
 let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
+// todo:
+// return response columns if called with (1, 1, 1, nCols)
+// return data rows if called with
 let formResponseSheetGetRange = jest.fn(() => ({
   getValues: () => ([responseColumns])
 }))
