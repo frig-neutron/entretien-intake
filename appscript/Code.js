@@ -60,7 +60,7 @@ function toJira(e) {
   let dataRange = responsesSheet.getRange(2, 1, numRows - 1, responsesSheet.getLastColumn())
 
   let rowOffset = 2 // 1 for header & 1 for starting count from 1
-  tickets = dataRange.getValues().
+  let tickets = dataRange.getValues().
     map((r, i) => new FormData(r, i + rowOffset)).
     map((f) => new TicketContext(asTicket(f), f))
   sendAll(tickets);
