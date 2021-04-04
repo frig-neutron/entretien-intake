@@ -1,6 +1,7 @@
 let responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
 let logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
 let columnIndex = indexResponseFields(responsesSheet)
+let jiraBasicAuthToken = loadJiraBasicAuthToken()
 
 class TicketContext {
 
@@ -107,7 +108,7 @@ function sendOne(ticketContext){
   let headers = {
     "content-type": "application/json",
     "Accept": "application/json",
-    "authorization": "Basic "
+    "authorization": "Basic " + jiraBasicAuthToken
   };
 
   let options = {
@@ -237,4 +238,13 @@ function renderSubjectForEmail(ticketContext){
 
 function renderTicketForEmail(ticketContext){
   return summarize(ticketContext.formData) + "\n" + ticketContext.formData.description
+}
+
+function loadJiraBasicAuthToken(){
+  let rootFolder = DriveApp.getRootFolder()
+  let jiraFolder = rootFolder.getFoldersByName("jira").next()
+  let tokenFile = jiraFolder.getFilesByName("jira-basic-auth-token").next()
+  let tokenId = tokenFile.getId();
+  let blob = tokenFile.getBlob();
+  return blob.getDataAsString().trim();
 }
