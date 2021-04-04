@@ -283,7 +283,7 @@ function loadJiraBasicAuthToken(){
 }
 
 // for testing
-if (module){
+if (typeof module !== 'undefined'){
   module.exports.createNotificationEmail = createNotificationEmail
   module.exports.roleDirectory = roleDirectory
 }
