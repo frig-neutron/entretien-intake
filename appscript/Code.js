@@ -23,9 +23,19 @@ class FormData {
     this.summary = rowFieldValue("Elément")
     this.description = rowFieldValue("Description")
     this.area = rowFieldValue("Zone")
-    this.priority = rowFieldValue("Priorité")
     this.reporter = rowFieldValue("Rapporté par")
-  } 
+    this.priority = this.mapFormToJiraPriority(
+        rowFieldValue("Priorité")
+    )
+  }
+
+  mapFormToJiraPriority(formPriorityValue) {
+    if (formPriorityValue.startsWith("Urgent")) {
+      return "Urgent"
+    } else {
+      return "Medium"
+    }
+  }
 }
 
 // ENTRY POINT
@@ -67,6 +77,8 @@ function asTicket(formData){
       },
       "summary": summarize(formData),
       "description": createDescription(formData),
+      // "customfield_10038": {"id": 10033}, // building
+      // "Area": formData.area,
       "priority": {"name": formData.priority},
       "issuetype":{
         "name": "Intake"
@@ -148,27 +160,27 @@ function mark(ticketRowIndex, columnIndex, value){
 let roleDirectory = {
   3735: [
     { "name": "Luis", "email": "daniil.alliance+as.luis.br3735@gmail.com" }, 
-    { "name": "Luis", "email": "cuibafilms+as.luis.br3735@gmail.com" }
+    // { "name": "Luis", "email": "cuibafilms+as.luis.br3735@gmail.com" }
     ],
   3737: [
     { "name": "Moussa", "email": "daniil.alliance+as.moussa.br3737@gmail.com" },
-    { "name": "Moussa", "email": "cuibafilms+as.moussa.br3737@gmail.com" }
+    // { "name": "Moussa", "email": "cuibafilms+as.moussa.br3737@gmail.com" }
     ],
   3739: [
     { "name": "Geneviève", "email": "daniil.alliance+as.genevieve.br3739@gmail.com" },
-    { "name": "Geneviève", "email": "cuibafilms+as.genevieve.br3739@gmail.com" }
+    // { "name": "Geneviève", "email": "cuibafilms+as.genevieve.br3739@gmail.com" }
     ],
   3743: [
     { "name": "Monika", "email": "daniil.alliance+as.monika.br3743@gmail.com" }, 
-    { "name": "Monika", "email": "cuibafilms+as.monika.br3743@gmail.com" }
+    // { "name": "Monika", "email": "cuibafilms+as.monika.br3743@gmail.com" }
     ],
   3745: [
     { "name": "Diego", "email": "daniil.alliance+as.diego.br3745@gmail.com" },
-    { "name": "Diego", "email": "cuibafilms+as.diego.br3745@gmail.com" },
+    // { "name": "Diego", "email": "cuibafilms+as.diego.br3745@gmail.com" },
     ],
   urgence: [
     { "name": "Monica", "email": "daniil.alliance+urgence@gmail.com" }, 
-    { "name": "Monica", "email": "cuibafilms+urgence@gmail.com" }
+    // { "name": "Monica", "email": "cuibafilms+urgence@gmail.com" }
     ],
   triage: []
 }
