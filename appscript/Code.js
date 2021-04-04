@@ -1,7 +1,17 @@
-let responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
-let logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
-let columnIndex = indexResponseFields(responsesSheet)
-let jiraBasicAuthToken = loadJiraBasicAuthToken()
+let responsesSheet
+let logSheet
+let columnIndex
+let jiraBasicAuthToken
+
+/**
+ * Delayed init or unit tests won't run b/c of missing symbols
+ */
+function init(){
+  responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
+  logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
+  columnIndex = indexResponseFields(responsesSheet)
+  jiraBasicAuthToken = loadJiraBasicAuthToken()
+}
 
 class TicketContext {
 
@@ -40,6 +50,7 @@ class FormData {
 
 // ENTRY POINT
 function toJira(e) {
+  init()
   let numRows = responsesSheet.getLastRow();
   let dataRange = responsesSheet.getRange(2, 1, numRows - 1, responsesSheet.getLastColumn())
 
