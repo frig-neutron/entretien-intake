@@ -19,22 +19,22 @@ let nonUrgentResponseValues = [
   "Diego Briceño",
   "chauffe-eau"
 ]
-let responseValues = [] // assign from urgent or non-urgent
 
 firstResponseRow = 2
 unprocessedRowTimestamp = ""
 
 // noinspection JSUnusedGlobalSymbols
-mocks = {
+mock = {
+  responseValues: [],
   responseMap() {
     return Object.fromEntries(
-        responseColumns.map((e, i) => [e, responseValues[i]])
+        responseColumns.map((e, i) => [e, mock.responseValues[i]])
     )
   },
   summaryLine() {
-    let building = mocks.responseMap()[intake.responseFieldLabels.building]
-    let area = mocks.responseMap()[intake.responseFieldLabels.area]
-    let shortSummary = mocks.responseMap()[intake.responseFieldLabels.element]
+    let building = mock.responseMap()[intake.responseFieldLabels.building]
+    let area = mock.responseMap()[intake.responseFieldLabels.area]
+    let shortSummary = mock.responseMap()[intake.responseFieldLabels.element]
 
     return building + " " + area + ": " + shortSummary
   },
@@ -52,7 +52,7 @@ mocks = {
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   responseValueRange: {
     getValues() {
-      return [responseValues]
+      return [mock.responseValues]
     }
   },
 
@@ -68,10 +68,10 @@ mocks = {
     getLastRow: () => firstResponseRow,
     getRange(row, column, numRows, numColumns) {
       if (this._isGetHeaderRange(row, column, numRows, numColumns)) {
-        return mocks.responseHeaderRange
+        return mock.responseHeaderRange
       }
       if (this._isGetResponseRange(row, column, numRows, numColumns)) {
-        return mocks.responseValueRange
+        return mock.responseValueRange
       }
     }
   },
@@ -79,7 +79,7 @@ mocks = {
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   logTimestampRange: {
     getValue() {
-      return mocks.responseLogTimestamp
+      return mock.responseLogTimestamp
     },
     setValue: jest.fn()
   },
@@ -99,13 +99,13 @@ mocks = {
     _isIssueLinkCheck: (r, c) => r === firstResponseRow && c === 3,
     getRange(row, col) {
       if (this._isTimestampCheck(row, col)) {
-        return mocks.logTimestampRange
+        return mock.logTimestampRange
       }
       if (this._isIssueKeyCheck(row, col)) {
-        return mocks.logIssueKeyRange
+        return mock.logIssueKeyRange
       }
       if (this._isIssueLinkCheck(row, col)) {
-        return mocks.logIssueLinkRange
+        return mock.logIssueLinkRange
       }
     }
   }
@@ -117,9 +117,9 @@ global.SpreadsheetApp = {
     getSheetByName: (name) => {
       switch (name) {
         case "Form responses 1":
-          return mocks.responsesSheet
+          return mock.responsesSheet
         case "state-of-affairs":
-          return mocks.logSheet
+          return mock.logSheet
       }
     }
   })
@@ -145,7 +145,7 @@ global.DriveApp = {
             if (fileName === "jira-basic-auth-token") {
               return iter({
                 getBlob: () => ({
-                  getDataAsString: () => mocks.jiraToken
+                  getDataAsString: () => mock.jiraToken
                 })
               })
             }
@@ -162,8 +162,8 @@ global.UrlFetchApp = {
     return {
       getContentText() {
         return JSON.stringify({
-          key: mocks.newJiraIssueKey,
-          self: mocks.restUrlBase + mocks.newJiraIssueKey,
+          key: mock.newJiraIssueKey,
+          self: mock.restUrlBase + mock.newJiraIssueKey,
         })
       }
     }
@@ -174,8 +174,8 @@ expect.extend({
   filesJiraTicket(received, ticketParts) {
     let [url, options] = received
     let payload = JSON.parse(options.payload)
-    let submittedBy = mocks.responseMap()[intake.responseFieldLabels.reportedBy]
-    let description = mocks.responseMap()[intake.responseFieldLabels.description]
+    let submittedBy = mock.responseMap()[intake.responseFieldLabels.reportedBy]
+    let description = mock.responseMap()[intake.responseFieldLabels.description]
 
     expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
     expect(options).toMatchObject({
@@ -185,10 +185,9 @@ expect.extend({
       headers: {
         "content-type": "application/json",
         "Accept": "application/json",
-        "authorization": "Basic " + mocks.jiraToken
+        "authorization": "Basic " + mock.jiraToken
       }
     })
-    console.log(payload)
     expect(payload).toMatchObject({
       fields: {
         project: {
@@ -197,7 +196,7 @@ expect.extend({
         issuetype: {
           name: 'Intake'
         },
-        summary: mocks.summaryLine(),
+        summary: mock.summaryLine(),
         description: `${description}\n\nReported by ${submittedBy}`,
         priority: {
           name: ticketParts.isUrgent ? "Urgent" : "Medium"
@@ -209,8 +208,8 @@ expect.extend({
     }
   },
   emailBody(received, bodyParts) {
-    let submittedBy = mocks.responseMap()[intake.responseFieldLabels.reportedBy]
-    let description = mocks.responseMap()[intake.responseFieldLabels.description]
+    let submittedBy = mock.responseMap()[intake.responseFieldLabels.reportedBy]
+    let description = mock.responseMap()[intake.responseFieldLabels.description]
 
     if (bodyParts.isUrgent) {
       expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))
@@ -218,11 +217,11 @@ expect.extend({
       expect(received).toMatch(new RegExp(submittedBy + " has submitted a maintenance report"))
     }
     expect(received).toMatch(new RegExp("^Dear " + bodyParts.recipientName))
-    expect(received).toMatch(new RegExp(mocks.summaryLine() + "\n" + description))
+    expect(received).toMatch(new RegExp(mock.summaryLine() + "\n" + description))
     expect(received).toMatch(new RegExp("You are receiving this email because " + bodyParts.reasonForReceiving))
     expect(received).toMatch(new RegExp(
         "Jira ticket "
-        + "https://lalliance.atlassian.net/browse/" + mocks.newJiraIssueKey
+        + "https://lalliance.atlassian.net/browse/" + mock.newJiraIssueKey
         + " has been assigned to this report"
     ))
 
@@ -244,15 +243,15 @@ expect.extend({
 })
 
 test("End to end, urgent", () => {
-  responseValues = urgentResponseValues
+  mock.responseValues = urgentResponseValues
   let timestampLike = /....-..-..T..:..:..\....Z/;
 
   intake.toJira(null);
 
   // verify log sheet updates
-  expect(mocks.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mocks.restUrlBase + mocks.newJiraIssueKey)
-  expect(mocks.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mocks.newJiraIssueKey)
-  expect(mocks.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
+  expect(mock.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mock.restUrlBase + mock.newJiraIssueKey)
+  expect(mock.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mock.newJiraIssueKey)
+  expect(mock.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
   // verify jira ticket
   expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: true})
@@ -279,7 +278,7 @@ test("End to end, urgent", () => {
 })
 
 test("End to end, non-urgent", () => {
-  responseValues = nonUrgentResponseValues
+  mock.responseValues = nonUrgentResponseValues
 
   intake.toJira(null);
 
