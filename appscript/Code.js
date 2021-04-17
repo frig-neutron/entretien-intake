@@ -7,6 +7,14 @@ let columnIndex
 let jiraBasicAuthToken
 const jiraPriorityUrgent = "Urgent"
 const jiraPriorityMedium = "Medium"
+const responseFieldLabels = {
+  building: "Bâtiment",
+  element: "Elément",
+  description: "Description",
+  area: "Zone",
+  reportedBy: "Rapporté par",
+  priority: "Priorité"
+}
 
 /**
  * Delayed init or unit tests won't run b/c of missing symbols
@@ -34,13 +42,12 @@ class FormData {
       return rowData[columnIndex[fieldName]]
     }
     this.rowIndex = rowIndex
-    this.building = rowFieldValue("Bâtiment")
-    this.summary = rowFieldValue("Elément")
-    this.description = rowFieldValue("Description")
-    this.area = rowFieldValue("Zone")
-    this.reporter = rowFieldValue("Rapporté par")
-    this.priority = this.mapFormToJiraPriority(
-        rowFieldValue("Priorité")
+    this.building = rowFieldValue(responseFieldLabels.building)
+    this.summary = rowFieldValue(responseFieldLabels.element)
+    this.description = rowFieldValue(responseFieldLabels.description)
+    this.area = rowFieldValue(responseFieldLabels.area)
+    this.reporter = rowFieldValue(responseFieldLabels.reportedBy)
+    this.priority = this.mapFormToJiraPriority(rowFieldValue(responseFieldLabels.priority)
     )
   }
 
@@ -218,7 +225,7 @@ function renderBuildingRepEmail(br, building, ticketContext) {
   let emailBody =
     `Dear ${br.name}
 
-  Please be informed that ${ticketContext.formData.reporter} has submitted a maintenance report:
+  Please be informed that ${ticketContext.formData.reporter} has submitted ${isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
@@ -238,7 +245,7 @@ function renderUrgenceEmails(ticketContext){
   function renderUrgenceEmail(recipient) {
     let emailBody = `Dear ${recipient.name}
 
-  Please be informed that ${ticketContext.formData.reporter} has submitted an URGENT maintenance issue:
+  Please be informed that ${ticketContext.formData.reporter} has submitted an URGENT maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
@@ -290,4 +297,5 @@ if (typeof module !== 'undefined'){
   module.exports.toJira = toJira
   module.exports.createNotificationEmail = createNotificationEmail
   module.exports.roleDirectory = roleDirectory
+  module.exports.responseFieldLabels = responseFieldLabels
 }

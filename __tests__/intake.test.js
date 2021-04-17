@@ -1,18 +1,26 @@
 intake = require("../appscript/Code")
 
 let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
-// todo:
-// return response columns if called with (1, 1, 1, nCols)
-// return data rows if called with
-let formResponseSheetGetRange = jest.fn(() => ({
-  getValues: () => ([responseColumns])
-}))
+let responseValues = [
+  "28/03/2021 16:01:17",
+  "L'eau chaude ne marche pas",
+  "3737",
+  "Sous-sol",
+  "Urgent (à régler dans les prochaines 24 heures / to be repaired in the next 24 hours)",
+  "Diego Briceño",
+  "chauffe-eau"
+]
 
 firstResponseRow = 2
 unprocessedRowTimestamp = ""
 
 // noinspection JSUnusedGlobalSymbols
 mocks = {
+  responseMap() {
+    return Object.fromEntries(
+        responseColumns.map((e, i) => [e, responseValues[i]])
+    )
+  },
   responseLogTimestamp: unprocessedRowTimestamp,
   jiraToken: "tok-" + Math.random(),
   newJiraIssueKey: "ISSUE-" + Math.random(),
@@ -26,15 +34,7 @@ mocks = {
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   responseValueRange: {
     getValues() {
-      return [[
-        "28/03/2021 16:01:17",
-        "L'eau chaude ne marche pas",
-        "3737",
-        "Sous-sol",
-        "Urgent (à régler dans les prochaines 24 heures / to be repaired in the next 24 hours)",
-        "Diego Briceño",
-        "chauffe-eau"
-      ]]
+      return [responseValues]
     }
   },
 
@@ -153,6 +153,45 @@ global.UrlFetchApp = {
   })
 }
 
+expect.extend({
+  emailBody(received, bodyParts) {
+    let submittedBy = mocks.responseMap()[intake.responseFieldLabels.reportedBy]
+    let building = mocks.responseMap()[intake.responseFieldLabels.building]
+    let area = mocks.responseMap()[intake.responseFieldLabels.area]
+    let shortSummary = mocks.responseMap()[intake.responseFieldLabels.element]
+    let description = mocks.responseMap()[intake.responseFieldLabels.description]
+
+    if (bodyParts.isUrgent) {
+      expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))
+    } else {
+      expect(received).toMatch(new RegExp(submittedBy + " has submitted a maintenance report"))
+    }
+    expect(received).toMatch(new RegExp("^Dear " + bodyParts.recipientName))
+    expect(received).toMatch(new RegExp(building + " " + area + ": " + shortSummary + "\n" + description))
+    expect(received).toMatch(new RegExp("You are receiving this email because " + bodyParts.reasonForReceiving))
+    expect(received).toMatch(new RegExp(
+        "Jira ticket "
+        + "https://lalliance.atlassian.net/browse/" + mocks.newJiraIssueKey
+        + " has been assigned to this report"
+    ))
+
+    return {
+      pass: true,
+    }
+  },
+  emailSent(received, matchers) {
+    let emailObject = received[0]
+    expect(emailObject).toMatchObject({
+      to: matchers.to,
+      subject: matchers.subject,
+      body: expect.emailBody(matchers.bodyParts)
+    })
+    return {
+      pass: true,
+    }
+  }
+})
+
 test("End to end, urgent", () => {
   intake.toJira(null);
 
@@ -161,14 +200,29 @@ test("End to end, urgent", () => {
   mocks.logIssueKeyRange.setValue
   mocks.logTimestampRange.setValue
 
+  expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
+    to: 'daniil.alliance+as.moussa.br3737@gmail.com',
+    subject: 'URGENT maintenance report from Diego Briceño',
+    bodyParts: {
+      recipientName: "Moussa",
+      reasonForReceiving: "you are a building representative for 3737",
+      isUrgent: true
+    }
+  })
+  expect(global.MailApp.sendEmail.mock.calls[1]).emailSent({
+    to: 'daniil.alliance+urgence@gmail.com',
+    subject: 'URGENT maintenance report from Diego Briceño',
+    bodyParts: {
+      recipientName: "Monica",
+      reasonForReceiving: "you are an Urgence-level responder",
+      isUrgent: true
+    }
+  })
   // verify:
   // - jira ticket filed
   // -- verify that token is correct
   // -- verify ticket values
-  // - email sent to each BR, urgence and catchall mailbox
-  // - email contains jira link
   // - title is formatted
-  // - email starts with greeting
 })
 
 test("Test-mode", () => {
