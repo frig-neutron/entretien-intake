@@ -1,10 +1,16 @@
 {
     "name": "entretien-intake",
     "private": true,
+    "dependencies": {
+        "@types/google-apps-script": "^1.0.14"
+    },
     "devDependencies": {
         "jest": "26.6.3"
     },
     "scripts": {
         "test": "jest"
+    },
+    "jest": {
+        "clearMocks": true
     }
 }

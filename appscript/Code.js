@@ -1,7 +1,20 @@
+/** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let responsesSheet
+
+/** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let logSheet
 let columnIndex
 let jiraBasicAuthToken
+const jiraPriorityUrgent = "Urgent"
+const jiraPriorityMedium = "Medium"
+const responseFieldLabels = {
+  building: "Bâtiment",
+  element: "Elément",
+  description: "Description",
+  area: "Zone",
+  reportedBy: "Rapporté par",
+  priority: "Priorité"
+}
 
 /**
  * Delayed init or unit tests won't run b/c of missing symbols
@@ -29,21 +42,20 @@ class FormData {
       return rowData[columnIndex[fieldName]]
     }
     this.rowIndex = rowIndex
-    this.building = rowFieldValue("Bâtiment")
-    this.summary = rowFieldValue("Elément")
-    this.description = rowFieldValue("Description")
-    this.area = rowFieldValue("Zone")
-    this.reporter = rowFieldValue("Rapporté par")
-    this.priority = this.mapFormToJiraPriority(
-        rowFieldValue("Priorité")
+    this.building = rowFieldValue(responseFieldLabels.building)
+    this.summary = rowFieldValue(responseFieldLabels.element)
+    this.description = rowFieldValue(responseFieldLabels.description)
+    this.area = rowFieldValue(responseFieldLabels.area)
+    this.reporter = rowFieldValue(responseFieldLabels.reportedBy)
+    this.priority = this.mapFormToJiraPriority(rowFieldValue(responseFieldLabels.priority)
     )
   }
 
   mapFormToJiraPriority(formPriorityValue) {
     if (formPriorityValue.startsWith("Urgent")) {
-      return "Urgent"
+      return jiraPriorityUrgent
     } else {
-      return "Medium"
+      return jiraPriorityMedium
     }
   }
 }
@@ -55,7 +67,7 @@ function toJira(e) {
   let dataRange = responsesSheet.getRange(2, 1, numRows - 1, responsesSheet.getLastColumn())
 
   let rowOffset = 2 // 1 for header & 1 for starting count from 1
-  tickets = dataRange.getValues().
+  let tickets = dataRange.getValues().
     map((r, i) => new FormData(r, i + rowOffset)).
     map((f) => new TicketContext(asTicket(f), f))
   sendAll(tickets);
@@ -196,18 +208,24 @@ let roleDirectory = {
   triage: []
 }
 
-function dispatch(ticketContext) {
+function createNotificationEmail(ticketContext) {
   let building = ticketContext.formData.building
   let buildingReps = roleDirectory[ticketContext.formData.building]
-  buildingReps.map((br) => dispatchToBuildingRep(br, building, ticketContext))
-  dispatchToUrgence(ticketContext)
+  let buildingRepEmails = buildingReps.map(br => renderBuildingRepEmail(br, building, ticketContext))
+  let urgenceEmails = renderUrgenceEmails(ticketContext)
+  return buildingRepEmails.concat(urgenceEmails);
 }
 
-function dispatchToBuildingRep(br, building, ticketContext) {
+function dispatch(ticketContext) {
+  let emails = createNotificationEmail(ticketContext);
+  emails.map(email => MailApp.sendEmail(email))
+}
+
+function renderBuildingRepEmail(br, building, ticketContext) {
   let emailBody =
     `Dear ${br.name}
 
-  Please be informed that ${ticketContext.formData.reporter} has submitted a maintenance report:
+  Please be informed that ${ticketContext.formData.reporter} has submitted ${isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
@@ -216,25 +234,18 @@ function dispatchToBuildingRep(br, building, ticketContext) {
   
   `
 
-  let email = {
+  return  {
     to: br.email,
-    subject: renderSubjectForEmail(ticketContext), 
+    subject: renderSubjectForEmail(ticketContext),
     body: emailBody
   }
-  MailApp.sendEmail(email)
 }
 
-function dispatchToUrgence(ticketContext){
-  if (ticketContext.formData.priority == "Urgent"){
-    roleDirectory.urgence.map((ur) => sendUrgenceEmail(ur, ticketContext))
-  }
-}
+function renderUrgenceEmails(ticketContext){
+  function renderUrgenceEmail(recipient) {
+    let emailBody = `Dear ${recipient.name}
 
-function sendUrgenceEmail(recepient, ticketContext){
-    let emailBody =
-    `Dear ${recepient.name}
-
-  Please be informed that ${ticketContext.formData.reporter} has submitted an URGENT maintenance issue:
+  Please be informed that ${ticketContext.formData.reporter} has submitted an URGENT maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
@@ -243,16 +254,26 @@ function sendUrgenceEmail(recepient, ticketContext){
   
   `
 
-  let email = {
-    to: recepient.email,
-    subject: renderSubjectForEmail(ticketContext), 
-    body: emailBody
+    return  {
+      to: recipient.email,
+      subject: renderSubjectForEmail(ticketContext),
+      body: emailBody
+    }
   }
-  MailApp.sendEmail(email)
+
+  if (isUrgent(ticketContext)){
+    return roleDirectory.urgence.map(ur => renderUrgenceEmail(ur))
+  } else {
+    return []
+  }
+}
+
+function isUrgent(ticketContext) {
+  return ticketContext.formData.priority === jiraPriorityUrgent;
 }
 
 function renderSubjectForEmail(ticketContext){
-  if (ticketContext.formData.priority == "Urgent"){
+  if (isUrgent(ticketContext)){
     return "URGENT maintenance report from " + ticketContext.formData.reporter
   } else {
     return "Maintenance report from " + ticketContext.formData.reporter
@@ -267,7 +288,13 @@ function loadJiraBasicAuthToken(){
   let rootFolder = DriveApp.getRootFolder()
   let jiraFolder = rootFolder.getFoldersByName("jira").next()
   let tokenFile = jiraFolder.getFilesByName("jira-basic-auth-token").next()
-  let tokenId = tokenFile.getId();
   let blob = tokenFile.getBlob();
   return blob.getDataAsString().trim();
+}
+
+// for testing
+if (typeof module !== 'undefined'){
+  module.exports.toJira = toJira
+  module.exports.roleDirectory = roleDirectory
+  module.exports.responseFieldLabels = responseFieldLabels
 }
