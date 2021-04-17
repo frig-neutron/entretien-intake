@@ -1,7 +1,7 @@
 intake = require("../appscript/Code")
 
 let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
-let responseValues = [
+let urgentResponseValues = [
   "28/03/2021 16:01:17",
   "L'eau chaude ne marche pas",
   "3737",
@@ -10,6 +10,16 @@ let responseValues = [
   "Diego Briceño",
   "chauffe-eau"
 ]
+let nonUrgentResponseValues = [
+  "28/03/2021 16:01:17",
+  "L'eau chaude ne marche pas",
+  "3737",
+  "Sous-sol",
+  "Régulier (ça peut être régler dans plus de 24 heures / can be solved in more that 24 hours)",
+  "Diego Briceño",
+  "chauffe-eau"
+]
+let responseValues = [] // assign from urgent or non-urgent
 
 firstResponseRow = 2
 unprocessedRowTimestamp = ""
@@ -234,6 +244,7 @@ expect.extend({
 })
 
 test("End to end, urgent", () => {
+  responseValues = urgentResponseValues
   let timestampLike = /....-..-..T..:..:..\....Z/;
 
   intake.toJira(null);
@@ -263,6 +274,26 @@ test("End to end, urgent", () => {
       recipientName: "Monica",
       reasonForReceiving: "you are an Urgence-level responder",
       isUrgent: true
+    }
+  })
+})
+
+test("End to end, non-urgent", () => {
+  responseValues = nonUrgentResponseValues
+
+  intake.toJira(null);
+
+  // verify jira ticket
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: false})
+
+  // verify sent notifications
+  expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
+    to: 'daniil.alliance+as.moussa.br3737@gmail.com',
+    subject: 'Maintenance report from Diego Briceño',
+    bodyParts: {
+      recipientName: "Moussa",
+      reasonForReceiving: "you are a building representative for 3737",
+      isUrgent: false
     }
   })
 })
