@@ -13,6 +13,8 @@ unprocessedRowTimestamp = ""
 
 mocks = {
   responseLogTimestamp: unprocessedRowTimestamp,
+  jiraToken: "tok-" + Math.random(),
+  newJiraIssueKey: "ISSUE-" + Math.random(),
 
   /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
   responsesSheet: {
@@ -23,17 +25,18 @@ mocks = {
 
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   logTimestampRange: {
-    getValue: function (){
+    getValue(){
       return mocks.responseLogTimestamp
-    }
+    },
+    setValue: jest.fn()
   },
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   logIssueKeyRange: {
-
+    setValue: jest.fn()
   },
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   logIssueLinkRange: {
-
+    setValue: jest.fn()
   },
 
   /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
@@ -41,7 +44,7 @@ mocks = {
     _isTimestampCheck: (r, c) => r === firstResponseRow && c === 1,
     _isIssueKeyCheck: (r, c) => r === firstResponseRow && c === 2,
     _isIssueLinkCheck: (r, c) => r === firstResponseRow && c === 3,
-    getRange: function(row, col) {
+    getRange(row, col) {
       if (this._isTimestampCheck(row, col)){
         return mocks.logTimestampRange
       }
@@ -77,8 +80,6 @@ iter = (value) => ({
   next: () => value
 })
 
-mockJiraToken = "tok-" + Math.random()
-
 global.DriveApp = {
   getRootFolder: () => ({
     getFoldersByName: (folderName) => {
@@ -88,7 +89,7 @@ global.DriveApp = {
             if (fileName === "jira-basic-auth-token"){
               return iter({
                 getBlob: () => ({
-                  getDataAsString: () => mockJiraToken
+                  getDataAsString: () => mocks.jiraToken
                 })
               })
             }
@@ -99,12 +100,28 @@ global.DriveApp = {
   })
 }
 
+// noinspection JSUnusedLocalSymbols
 global.UrlFetchApp = {
-
+  fetch: jest.fn((url, options) => {
+    // todo: verify token and that options match submitted form values
+    return {
+      getContentText(){
+        return JSON.stringify({
+          key: mocks.newJiraIssueKey,
+          self: "https://lalliance.atlassian.net/mockrest/" + mocks.newJiraIssueKey,
+        })
+      }
+    }
+  })
 }
 
 test("End to end", () => {
   intake.toJira(null);
+
+  // todo: check invocations, and possibly reset
+  mocks.logIssueLinkRange.setValue
+  mocks.logIssueKeyRange.setValue
+  mocks.logTimestampRange.setValue
 
   // verify:
   // - jira ticket filed
