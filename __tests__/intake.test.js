@@ -8,19 +8,61 @@ let formResponseSheetGetRange = jest.fn(() => ({
   getValues: () => ([responseColumns])
 }))
 
+firstResponseRow = 2
+unprocessedRowTimestamp = ""
+
+mocks = {
+  responseLogTimestamp: unprocessedRowTimestamp,
+
+  /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
+  responsesSheet: {
+    getLastColumn: () => responseColumns.length,
+    getLastRow: () => firstResponseRow,
+    getRange: formResponseSheetGetRange
+  },
+
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  logTimestampRange: {
+    getValue: function (){
+      return mocks.responseLogTimestamp
+    }
+  },
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  logIssueKeyRange: {
+
+  },
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  logIssueLinkRange: {
+
+  },
+
+  /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
+  logSheet: {
+    _isTimestampCheck: (r, c) => r === firstResponseRow && c === 1,
+    _isIssueKeyCheck: (r, c) => r === firstResponseRow && c === 2,
+    _isIssueLinkCheck: (r, c) => r === firstResponseRow && c === 3,
+    getRange: function(row, col) {
+      if (this._isTimestampCheck(row, col)){
+        return mocks.logTimestampRange
+      }
+      if (this._isIssueKeyCheck(row, col)){
+        return mocks.logIssueKeyRange
+      }
+      if (this._isIssueLinkCheck(row, col)){
+        return mocks.logIssueLinkRange
+      }
+    }
+  }
+}
+
 global.SpreadsheetApp = {
   getActive: () => ({
     getSheetByName: (name) => {
       switch(name){
         case "Form responses 1":
-          return {
-            getLastColumn: () => responseColumns.length,
-            getRange: formResponseSheetGetRange
-          }
+          return mocks.responsesSheet
         case "state-of-affairs":
-          return {
-
-          }
+          return mocks.logSheet
       }
     }
   })
@@ -35,6 +77,8 @@ iter = (value) => ({
   next: () => value
 })
 
+mockJiraToken = "tok-" + Math.random()
+
 global.DriveApp = {
   getRootFolder: () => ({
     getFoldersByName: (folderName) => {
@@ -44,7 +88,7 @@ global.DriveApp = {
             if (fileName === "jira-basic-auth-token"){
               return iter({
                 getBlob: () => ({
-                  getDataAsString: () => " jira-token "
+                  getDataAsString: () => mockJiraToken
                 })
               })
             }
@@ -61,8 +105,26 @@ global.UrlFetchApp = {
 
 test("End to end", () => {
   intake.toJira(null);
+
+  // verify:
+  // - jira ticket filed
+  // -- verify that token is correct
+  // - email sent to each BR, urgence and catchall mailbox
+  // - email contains jira link
+  // - title is formatted
+  // - email starts with greeting
 })
 
+test("Test-mode", () => {
+  // when jirafy invoked in test mode,
+  // same as end-to-end test except
+  // jira tickets have TEST prefixed to description
+  // all email goes to daniil.alliance+other.person@gmail.com
+
+})
+
+
+// piece-by-piece
 test("Create notification emails", () => {
   intake.roleDirectory["666"] = [{
     name: "TheBeast",
@@ -78,6 +140,7 @@ test("Create notification emails", () => {
     "rowIndex": 1
   }
   let emails = intake.createNotificationEmail(ticketContext)
+
   expect(emails).toMatchObject([{
     to: "665+1@gmail.com"
   }])

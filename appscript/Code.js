@@ -1,7 +1,7 @@
-/** @type {Sheet} */
+/** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let responsesSheet
 
-/** @type {Sheet} */
+/** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let logSheet
 let columnIndex
 let jiraBasicAuthToken
