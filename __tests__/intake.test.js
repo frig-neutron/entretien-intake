@@ -93,6 +93,7 @@ mocks = {
   }
 }
 
+/** @type {GoogleAppsScript.Spreadsheet.SpreadsheetApp} */
 global.SpreadsheetApp = {
   getActive: () => ({
     getSheetByName: (name) => {
@@ -106,13 +107,17 @@ global.SpreadsheetApp = {
   })
 }
 
-global.MailApp = {}
+/** @type {GoogleAppsScript.Mail.MailApp} */
+global.MailApp = {
+  sendEmail: jest.fn()
+}
 
 // wrap value in fake iterator. Returns the same value over and over and over and over....
 iter = (value) => ({
   next: () => value
 })
 
+/** @type {GoogleAppsScript.Drive.DriveApp} */
 global.DriveApp = {
   getRootFolder: () => ({
     getFoldersByName: (folderName) => {
@@ -148,7 +153,7 @@ global.UrlFetchApp = {
   })
 }
 
-test("End to end", () => {
+test("End to end, urgent", () => {
   intake.toJira(null);
 
   // todo: check invocations, and possibly reset
