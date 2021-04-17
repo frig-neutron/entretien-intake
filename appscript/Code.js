@@ -295,7 +295,6 @@ function loadJiraBasicAuthToken(){
 // for testing
 if (typeof module !== 'undefined'){
   module.exports.toJira = toJira
-  module.exports.createNotificationEmail = createNotificationEmail
   module.exports.roleDirectory = roleDirectory
   module.exports.responseFieldLabels = responseFieldLabels
 }
