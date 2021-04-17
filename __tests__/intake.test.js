@@ -11,21 +11,56 @@ let formResponseSheetGetRange = jest.fn(() => ({
 firstResponseRow = 2
 unprocessedRowTimestamp = ""
 
+// noinspection JSUnusedGlobalSymbols
 mocks = {
   responseLogTimestamp: unprocessedRowTimestamp,
   jiraToken: "tok-" + Math.random(),
   newJiraIssueKey: "ISSUE-" + Math.random(),
 
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  responseHeaderRange: {
+    getValues() {
+      return [responseColumns]
+    }
+  },
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  responseValueRange: {
+    getValues() {
+      return [[
+        "28/03/2021 16:01:17",
+        "L'eau chaude ne marche pas",
+        "3737",
+        "Sous-sol",
+        "Urgent (à régler dans les prochaines 24 heures / to be repaired in the next 24 hours)",
+        "Diego Briceño",
+        "chauffe-eau"
+      ]]
+    }
+  },
+
   /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
   responsesSheet: {
+    _isGetResponseRange: (row, col, nRows, nCols) =>
+        row === firstResponseRow && col === 1 &&
+        nRows === 1 && nCols === responseColumns.length,
+    _isGetHeaderRange: (row, col, nRows, nCols) =>
+        row === 1 && col === 1 &&
+        nRows === 1 && nCols === responseColumns.length,
     getLastColumn: () => responseColumns.length,
     getLastRow: () => firstResponseRow,
-    getRange: formResponseSheetGetRange
+    getRange(row, column, numRows, numColumns) {
+      if (this._isGetHeaderRange(row, column, numRows, numColumns)) {
+        return mocks.responseHeaderRange
+      }
+      if (this._isGetResponseRange(row, column, numRows, numColumns)) {
+        return mocks.responseValueRange
+      }
+    }
   },
 
   /** @type {GoogleAppsScript.Spreadsheet.Range} */
   logTimestampRange: {
-    getValue(){
+    getValue() {
       return mocks.responseLogTimestamp
     },
     setValue: jest.fn()
@@ -45,13 +80,13 @@ mocks = {
     _isIssueKeyCheck: (r, c) => r === firstResponseRow && c === 2,
     _isIssueLinkCheck: (r, c) => r === firstResponseRow && c === 3,
     getRange(row, col) {
-      if (this._isTimestampCheck(row, col)){
+      if (this._isTimestampCheck(row, col)) {
         return mocks.logTimestampRange
       }
-      if (this._isIssueKeyCheck(row, col)){
+      if (this._isIssueKeyCheck(row, col)) {
         return mocks.logIssueKeyRange
       }
-      if (this._isIssueLinkCheck(row, col)){
+      if (this._isIssueLinkCheck(row, col)) {
         return mocks.logIssueLinkRange
       }
     }
@@ -61,7 +96,7 @@ mocks = {
 global.SpreadsheetApp = {
   getActive: () => ({
     getSheetByName: (name) => {
-      switch(name){
+      switch (name) {
         case "Form responses 1":
           return mocks.responsesSheet
         case "state-of-affairs":
@@ -71,9 +106,7 @@ global.SpreadsheetApp = {
   })
 }
 
-global.MailApp = {
-
-}
+global.MailApp = {}
 
 // wrap value in fake iterator. Returns the same value over and over and over and over....
 iter = (value) => ({
@@ -86,7 +119,7 @@ global.DriveApp = {
       if (folderName === "jira") {
         return iter({
           getFilesByName: (fileName) => {
-            if (fileName === "jira-basic-auth-token"){
+            if (fileName === "jira-basic-auth-token") {
               return iter({
                 getBlob: () => ({
                   getDataAsString: () => mocks.jiraToken
@@ -105,7 +138,7 @@ global.UrlFetchApp = {
   fetch: jest.fn((url, options) => {
     // todo: verify token and that options match submitted form values
     return {
-      getContentText(){
+      getContentText() {
         return JSON.stringify({
           key: mocks.newJiraIssueKey,
           self: "https://lalliance.atlassian.net/mockrest/" + mocks.newJiraIssueKey,
@@ -126,6 +159,7 @@ test("End to end", () => {
   // verify:
   // - jira ticket filed
   // -- verify that token is correct
+  // -- verify ticket values
   // - email sent to each BR, urgence and catchall mailbox
   // - email contains jira link
   // - title is formatted
@@ -139,7 +173,6 @@ test("Test-mode", () => {
   // all email goes to daniil.alliance+other.person@gmail.com
 
 })
-
 
 // piece-by-piece
 test("Create notification emails", () => {
