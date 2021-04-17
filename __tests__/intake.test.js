@@ -22,6 +22,7 @@ mocks = {
     )
   },
   responseLogTimestamp: unprocessedRowTimestamp,
+  restUrlBase: "https://lalliance.atlassian.net/mockrest/",
   jiraToken: "tok-" + Math.random(),
   newJiraIssueKey: "ISSUE-" + Math.random(),
 
@@ -146,7 +147,7 @@ global.UrlFetchApp = {
       getContentText() {
         return JSON.stringify({
           key: mocks.newJiraIssueKey,
-          self: "https://lalliance.atlassian.net/mockrest/" + mocks.newJiraIssueKey,
+          self: mocks.restUrlBase + mocks.newJiraIssueKey,
         })
       }
     }
@@ -193,12 +194,13 @@ expect.extend({
 })
 
 test("End to end, urgent", () => {
+  let timestampLike = /....-..-..T..:..:..\....Z/;
+
   intake.toJira(null);
 
-  // todo: check invocations, and possibly reset
-  mocks.logIssueLinkRange.setValue
-  mocks.logIssueKeyRange.setValue
-  mocks.logTimestampRange.setValue
+  expect(mocks.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mocks.restUrlBase + mocks.newJiraIssueKey)
+  expect(mocks.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mocks.newJiraIssueKey)
+  expect(mocks.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
     to: 'daniil.alliance+as.moussa.br3737@gmail.com',
