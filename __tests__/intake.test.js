@@ -21,6 +21,13 @@ mocks = {
         responseColumns.map((e, i) => [e, responseValues[i]])
     )
   },
+  summaryLine() {
+    let building = mocks.responseMap()[intake.responseFieldLabels.building]
+    let area = mocks.responseMap()[intake.responseFieldLabels.area]
+    let shortSummary = mocks.responseMap()[intake.responseFieldLabels.element]
+
+    return building + " " + area + ": " + shortSummary
+  },
   responseLogTimestamp: unprocessedRowTimestamp,
   restUrlBase: "https://lalliance.atlassian.net/mockrest/",
   jiraToken: "tok-" + Math.random(),
@@ -142,7 +149,6 @@ global.DriveApp = {
 // noinspection JSUnusedLocalSymbols
 global.UrlFetchApp = {
   fetch: jest.fn((url, options) => {
-    // todo: verify token and that options match submitted form values
     return {
       getContentText() {
         return JSON.stringify({
@@ -155,11 +161,45 @@ global.UrlFetchApp = {
 }
 
 expect.extend({
+  filesJiraTicket(received, ticketParts) {
+    let [url, options] = received
+    let payload = JSON.parse(options.payload)
+    let submittedBy = mocks.responseMap()[intake.responseFieldLabels.reportedBy]
+    let description = mocks.responseMap()[intake.responseFieldLabels.description]
+
+    expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
+    expect(options).toMatchObject({
+      // todo: seems redundant to have multiple content type specs. retest.
+      "content-type": "application/json",
+      "method": "POST",
+      headers: {
+        "content-type": "application/json",
+        "Accept": "application/json",
+        "authorization": "Basic " + mocks.jiraToken
+      }
+    })
+    console.log(payload)
+    expect(payload).toMatchObject({
+      fields: {
+        project: {
+          key: 'TRIAG'
+        },
+        issuetype: {
+          name: 'Intake'
+        },
+        summary: mocks.summaryLine(),
+        description: `${description}\n\nReported by ${submittedBy}`,
+        priority: {
+          name: ticketParts.isUrgent ? "Urgent" : "Medium"
+        }
+      }
+    })
+    return {
+      pass: true
+    }
+  },
   emailBody(received, bodyParts) {
     let submittedBy = mocks.responseMap()[intake.responseFieldLabels.reportedBy]
-    let building = mocks.responseMap()[intake.responseFieldLabels.building]
-    let area = mocks.responseMap()[intake.responseFieldLabels.area]
-    let shortSummary = mocks.responseMap()[intake.responseFieldLabels.element]
     let description = mocks.responseMap()[intake.responseFieldLabels.description]
 
     if (bodyParts.isUrgent) {
@@ -168,7 +208,7 @@ expect.extend({
       expect(received).toMatch(new RegExp(submittedBy + " has submitted a maintenance report"))
     }
     expect(received).toMatch(new RegExp("^Dear " + bodyParts.recipientName))
-    expect(received).toMatch(new RegExp(building + " " + area + ": " + shortSummary + "\n" + description))
+    expect(received).toMatch(new RegExp(mocks.summaryLine() + "\n" + description))
     expect(received).toMatch(new RegExp("You are receiving this email because " + bodyParts.reasonForReceiving))
     expect(received).toMatch(new RegExp(
         "Jira ticket "
@@ -198,10 +238,15 @@ test("End to end, urgent", () => {
 
   intake.toJira(null);
 
+  // verify log sheet updates
   expect(mocks.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mocks.restUrlBase + mocks.newJiraIssueKey)
   expect(mocks.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mocks.newJiraIssueKey)
   expect(mocks.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
+  // verify jira ticket
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: true})
+
+  // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
     to: 'daniil.alliance+as.moussa.br3737@gmail.com',
     subject: 'URGENT maintenance report from Diego Briceño',
@@ -220,11 +265,6 @@ test("End to end, urgent", () => {
       isUrgent: true
     }
   })
-  // verify:
-  // - jira ticket filed
-  // -- verify that token is correct
-  // -- verify ticket values
-  // - title is formatted
 })
 
 test("Test-mode", () => {
