@@ -1,4 +1,5 @@
 let inTestMode = false
+let testModePrefix = ""
 
 /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let responsesSheet
@@ -86,6 +87,7 @@ function toJiraTestMode(e) {
       receivers[receiverIndex].email = "daniil.alliance+" + email.substring(0, atIndex) + "@gmail.com"
     }
   }
+  testModePrefix = "TEST - "
   toJira(e)
 }
 
@@ -293,12 +295,12 @@ function isUrgent(ticketContext) {
   return ticketContext.formData.priority === jiraPriorityUrgent;
 }
 
-function renderSubjectForEmail(ticketContext){
-  if (isUrgent(ticketContext)){
-    return "URGENT maintenance report from " + ticketContext.formData.reporter
-  } else {
-    return "Maintenance report from " + ticketContext.formData.reporter
-  }
+function renderSubjectForEmail(ticketContext) {
+  return testModePrefix + (
+      isUrgent(ticketContext) ?
+        "URGENT maintenance report from " + ticketContext.formData.reporter:
+        "Maintenance report from " + ticketContext.formData.reporter
+  )
 }
 
 function renderTicketForEmail(ticketContext){

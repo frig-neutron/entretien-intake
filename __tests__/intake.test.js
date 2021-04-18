@@ -302,14 +302,11 @@ test("Test-mode", () => {
 
   intake.toJiraTestMode();
 
-  // when jirafy invoked in test mode,
-  // same as end-to-end test except
-  // jira tickets have TEST prefixed to description
-  // all email goes to daniil.alliance+other.person@gmail.com
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: true})
 
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
     to: 'daniil.alliance+yassaoubangoura@gmail.com',
-    subject: 'URGENT maintenance report from Diego Briceño',
+    subject: 'TEST - URGENT maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Moussa",
       reasonForReceiving: "you are a building representative for 3737",
@@ -318,7 +315,7 @@ test("Test-mode", () => {
   })
   expect(global.MailApp.sendEmail.mock.calls[4]).emailSent({
     to: 'daniil.alliance+mgutkowska2+intake@gmail.com',
-    subject: 'URGENT maintenance report from Diego Briceño',
+    subject: 'TEST - URGENT maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Monica",
       reasonForReceiving: "you are an Urgence-level responder",
