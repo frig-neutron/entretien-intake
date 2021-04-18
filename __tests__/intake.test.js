@@ -196,7 +196,7 @@ expect.extend({
         issuetype: {
           name: 'Intake'
         },
-        summary: mock.summaryLine(),
+        summary: ticketParts.summary,
         description: `${description}\n\nReported by ${submittedBy}`,
         priority: {
           name: ticketParts.isUrgent ? "Urgent" : "Medium"
@@ -254,7 +254,10 @@ test("End to end, urgent", () => {
   expect(mock.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
   // verify jira ticket
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: true})
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    isUrgent: true,
+    summary: mock.summaryLine()
+  })
 
   // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
@@ -283,7 +286,10 @@ test("End to end, non-urgent", () => {
   intake.toJira(null);
 
   // verify jira ticket
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: false})
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    isUrgent: false,
+    summary: mock.summaryLine()
+  })
 
   // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
@@ -302,7 +308,10 @@ test("Test-mode", () => {
 
   intake.toJiraTestMode();
 
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: true})
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    isUrgent: true,
+    summary: "TEST - " + mock.summaryLine()
+  })
 
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
     to: 'daniil.alliance+yassaoubangoura@gmail.com',

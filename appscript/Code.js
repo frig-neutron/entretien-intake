@@ -117,7 +117,7 @@ function asTicket(formData) {
       "project": {
         "key": "TRIAG"
       },
-      "summary": summarize(formData),
+      "summary": testModePrefix + summarize(formData),
       "description": createDescription(formData),
       // "customfield_10038": {"id": 10033}, // building
       // "Area": formData.area,
@@ -247,7 +247,8 @@ function renderBuildingRepEmail(br, building, ticketContext) {
   let emailBody =
       `Dear ${br.name}
 
-  Please be informed that ${ticketContext.formData.reporter} has submitted ${isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
+  Please be informed that ${ticketContext.formData.reporter} has submitted ${
+    isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
