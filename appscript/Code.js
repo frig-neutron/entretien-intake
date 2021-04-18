@@ -22,7 +22,7 @@ const responseFieldLabels = {
 /**
  * Delayed init or unit tests won't run b/c of missing symbols
  */
-function init(){
+function init() {
   responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
   logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
   columnIndex = indexResponseFields(responsesSheet)
@@ -31,7 +31,7 @@ function init(){
 
 class TicketContext {
 
-  constructor (jiraTicket, formData){
+  constructor(jiraTicket, formData) {
     this.jiraTicket = jiraTicket
     this.formData = formData
     this.rowIndex = formData.rowIndex
@@ -40,10 +40,11 @@ class TicketContext {
 
 class FormData {
 
-  constructor (rowData, rowIndex){
-    function rowFieldValue(fieldName){
+  constructor(rowData, rowIndex) {
+    function rowFieldValue(fieldName) {
       return rowData[columnIndex[fieldName]]
     }
+
     this.rowIndex = rowIndex
     this.building = rowFieldValue(responseFieldLabels.building)
     this.summary = rowFieldValue(responseFieldLabels.element)
@@ -96,24 +97,24 @@ function indexResponseFields() {
   return indexFields(headerValues);
 }
 
-function getHeaderValues(){
+function getHeaderValues() {
   let nCols = responsesSheet.getLastColumn()
   let headerRange = responsesSheet.getRange(1, 1, 1, nCols)
   return headerRange.getValues()[0]
 }
 
 // return {fieldName: columnIndex} object
-function indexFields(headerRow){
+function indexFields(headerRow) {
   let entries = headerRow.map((e, i) => [e, i])
   return Object.fromEntries(entries)
 }
 
 // must deserialize to com.atlassian.jira.rest.v2.issue.IssueUpdateBean
 // https://docs.atlassian.com/software/jira/docs/api/7.2.2/com/atlassian/jira/rest/v2/issue/IssueUpdateBean.html
-function asTicket(formData){
+function asTicket(formData) {
   return {
     "fields": {
-      "project":{
+      "project": {
         "key": "TRIAG"
       },
       "summary": summarize(formData),
@@ -121,7 +122,7 @@ function asTicket(formData){
       // "customfield_10038": {"id": 10033}, // building
       // "Area": formData.area,
       "priority": {"name": formData.priority},
-      "issuetype":{
+      "issuetype": {
         "name": "Intake"
       }
     }
@@ -132,30 +133,30 @@ function summarize(formData) {
   return formData.building + " " + formData.area + ": " + formData.summary
 }
 
-function createDescription(formData){
-  return formData.description + "\n\n" + 
-  "Reported by " + formData.reporter;
+function createDescription(formData) {
+  return formData.description + "\n\n" +
+      "Reported by " + formData.reporter;
 }
 
 // input is [TicketContext, ...]
-function sendAll(tickets){
+function sendAll(tickets) {
   tickets.map(ticketContext => sendAndMark(ticketContext))
 }
 
-function sendAndMark(ticketContext){
-  if (notAlreadySent(ticketContext.rowIndex)){
+function sendAndMark(ticketContext) {
+  if (notAlreadySent(ticketContext.rowIndex)) {
     ticketContext.sendResponse = sendOne(ticketContext)
     markSent(ticketContext)
     dispatch(ticketContext)
-  } 
+  }
 }
 
-function notAlreadySent(ticketRowIndex){
+function notAlreadySent(ticketRowIndex) {
   let timestampValue = logSheet.getRange(ticketRowIndex, 1).getValue();
   return timestampValue === "";
 }
 
-function sendOne(ticketContext){
+function sendOne(ticketContext) {
   let payload = JSON.stringify(ticketContext.jiraTicket);
   let url = "https://lalliance.atlassian.net/rest/api/latest/issue"
   let headers = {
@@ -174,10 +175,10 @@ function sendOne(ticketContext){
   return UrlFetchApp.fetch(url, options);
 }
 
-function markSent(ticketContext){
+function markSent(ticketContext) {
   let contentJson = JSON.parse(ticketContext.sendResponse.getContentText())
   let issueKey = contentJson.key
-  let link = contentJson.self 
+  let link = contentJson.self
   ticketContext.jiraTicketRestLink = link
   ticketContext.jiraTicketUserLink = "https://lalliance.atlassian.net/browse/" + issueKey
   ticketContext.jiraTicketKey = issueKey
@@ -188,15 +189,13 @@ function markSent(ticketContext){
 
 }
 
-function mark(ticketRowIndex, columnIndex, value){
+function mark(ticketRowIndex, columnIndex, value) {
   logSheet.getRange(ticketRowIndex, columnIndex).setValue(value)
 }
 
-
 ////////////////////////// DISPATCH ///////////////////////////
 ////////////////////////// DISPATCH ///////////////////////////
 ////////////////////////// DISPATCH ///////////////////////////
-
 
 let roleDirectory = {
   3735: [
@@ -246,7 +245,7 @@ function dispatch(ticketContext) {
 
 function renderBuildingRepEmail(br, building, ticketContext) {
   let emailBody =
-    `Dear ${br.name}
+      `Dear ${br.name}
 
   Please be informed that ${ticketContext.formData.reporter} has submitted ${isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
@@ -257,14 +256,14 @@ function renderBuildingRepEmail(br, building, ticketContext) {
   
   `
 
-  return  {
+  return {
     to: br.email,
     subject: renderSubjectForEmail(ticketContext),
     body: emailBody
   }
 }
 
-function renderUrgenceEmails(ticketContext){
+function renderUrgenceEmails(ticketContext) {
   function renderUrgenceEmail(recipient) {
     let emailBody = `Dear ${recipient.name}
 
@@ -277,14 +276,14 @@ function renderUrgenceEmails(ticketContext){
   
   `
 
-    return  {
+    return {
       to: recipient.email,
       subject: renderSubjectForEmail(ticketContext),
       body: emailBody
     }
   }
 
-  if (isUrgent(ticketContext)){
+  if (isUrgent(ticketContext)) {
     return roleDirectory.urgence.map(ur => renderUrgenceEmail(ur))
   } else {
     return []
@@ -303,11 +302,11 @@ function renderSubjectForEmail(ticketContext) {
   )
 }
 
-function renderTicketForEmail(ticketContext){
+function renderTicketForEmail(ticketContext) {
   return summarize(ticketContext.formData) + "\n" + ticketContext.formData.description
 }
 
-function loadJiraBasicAuthToken(){
+function loadJiraBasicAuthToken() {
   let rootFolder = DriveApp.getRootFolder()
   let jiraFolder = rootFolder.getFoldersByName("jira").next()
   let tokenFile = jiraFolder.getFilesByName("jira-basic-auth-token").next()
@@ -316,7 +315,7 @@ function loadJiraBasicAuthToken(){
 }
 
 // for testing
-if (typeof module !== 'undefined'){
+if (typeof module !== 'undefined') {
   module.exports.toJira = toJira
   module.exports.roleDirectory = roleDirectory
   module.exports.responseFieldLabels = responseFieldLabels
