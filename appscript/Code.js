@@ -1,3 +1,5 @@
+let inTestMode = false
+
 /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let responsesSheet
 
@@ -73,7 +75,21 @@ function toJira(e) {
   sendAll(tickets);
 }
 
-function indexResponseFields(){
+// ENTRY POINT FOR TEST MODE
+function toJiraTestMode(e) {
+  inTestMode = true
+  for (const role in roleDirectory){
+    let receivers = roleDirectory[role]
+    for (const receiverIndex in receivers) {
+      let email = receivers[receiverIndex].email
+      let atIndex = email.indexOf('@');
+      receivers[receiverIndex].email = "daniil.alliance+" + email.substring(0, atIndex) + "@gmail.com"
+    }
+  }
+  toJira(e)
+}
+
+function indexResponseFields() {
   let headerValues = getHeaderValues()
   return indexFields(headerValues);
 }
