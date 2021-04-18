@@ -182,29 +182,34 @@ function mark(ticketRowIndex, columnIndex, value){
 
 let roleDirectory = {
   3735: [
-    { "name": "Luis", "email": "daniil.alliance+as.luis.br3735@gmail.com" }, 
-    // { "name": "Luis", "email": "cuibafilms+as.luis.br3735@gmail.com" }
-    ],
+    {"name": "Luis", "email": "luis.chepen+intake@gmail.com"},
+    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+  ],
   3737: [
-    { "name": "Moussa", "email": "daniil.alliance+as.moussa.br3737@gmail.com" },
-    // { "name": "Moussa", "email": "cuibafilms+as.moussa.br3737@gmail.com" }
-    ],
+    {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
+    {"name": "Yan", "email": "yan.michaud.ym+intake@gmail.com"},
+    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+  ],
   3739: [
-    { "name": "Geneviève", "email": "daniil.alliance+as.genevieve.br3739@gmail.com" },
-    // { "name": "Geneviève", "email": "cuibafilms+as.genevieve.br3739@gmail.com" }
-    ],
+    {"name": "Geneviève", "email": "genevieve.alliance+intake@gmail.com"},
+    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+  ],
   3743: [
-    { "name": "Monika", "email": "daniil.alliance+as.monika.br3743@gmail.com" }, 
-    // { "name": "Monika", "email": "cuibafilms+as.monika.br3743@gmail.com" }
-    ],
+    {"name": "Monika", "email": "mgutkowska2+intake@gmail.com"},
+    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+  ],
   3745: [
-    { "name": "Diego", "email": "daniil.alliance+as.diego.br3745@gmail.com" },
-    // { "name": "Diego", "email": "cuibafilms+as.diego.br3745@gmail.com" },
-    ],
+    {"name": "Diego A", "email": "diegoabellap+intake@gmail.com"},
+    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+  ],
   urgence: [
-    { "name": "Monica", "email": "daniil.alliance+urgence@gmail.com" }, 
-    // { "name": "Monica", "email": "cuibafilms+urgence@gmail.com" }
-    ],
+    {"name": "Monica", "email": "mgutkowska2+intake@gmail.com"},
+  ],
   triage: []
 }
 

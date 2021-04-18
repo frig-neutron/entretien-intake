@@ -258,7 +258,7 @@ test("End to end, urgent", () => {
 
   // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
-    to: 'daniil.alliance+as.moussa.br3737@gmail.com',
+    to: 'yassaoubangoura@yahoo.fr',
     subject: 'URGENT maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Moussa",
@@ -266,8 +266,8 @@ test("End to end, urgent", () => {
       isUrgent: true
     }
   })
-  expect(global.MailApp.sendEmail.mock.calls[1]).emailSent({
-    to: 'daniil.alliance+urgence@gmail.com',
+  expect(global.MailApp.sendEmail.mock.calls[4]).emailSent({
+    to: 'mgutkowska2+intake@gmail.com',
     subject: 'URGENT maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Monica",
@@ -287,7 +287,7 @@ test("End to end, non-urgent", () => {
 
   // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
-    to: 'daniil.alliance+as.moussa.br3737@gmail.com',
+    to: 'yassaoubangoura@yahoo.fr',
     subject: 'Maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Moussa",
