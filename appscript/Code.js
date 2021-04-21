@@ -80,7 +80,7 @@ function toJira(e) {
 // ENTRY POINT FOR TEST MODE
 function toJiraTestMode(e) {
   inTestMode = true
-  for (const role in roleDirectory){
+  for (const role in roleDirectory) {
     let receivers = roleDirectory[role]
     for (const receiverIndex in receivers) {
       let email = receivers[receiverIndex].email
@@ -248,7 +248,7 @@ function renderBuildingRepEmail(br, building, ticketContext) {
       `Dear ${br.name}
 
   Please be informed that ${ticketContext.formData.reporter} has submitted ${
-    isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
+          isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
@@ -298,8 +298,8 @@ function isUrgent(ticketContext) {
 function renderSubjectForEmail(ticketContext) {
   return testModePrefix + (
       isUrgent(ticketContext) ?
-        "URGENT maintenance report from " + ticketContext.formData.reporter:
-        "Maintenance report from " + ticketContext.formData.reporter
+          "URGENT maintenance report from " + ticketContext.formData.reporter :
+          "Maintenance report from " + ticketContext.formData.reporter
   )
 }
 
