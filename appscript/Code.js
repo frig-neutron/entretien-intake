@@ -72,16 +72,16 @@ function toJira(e) {
 
   let rowOffset = 2 // 1 for header & 1 for starting count from 1
   let tickets = dataRange.getValues().
-    map((r, i) => new FormData(r, i + rowOffset)).
-    map((f) => new TicketContext(asTicket(f), f))
+      map((r, i) => new FormData(r, i + rowOffset)).
+      map((f) => new TicketContext(asTicket(f), f))
   sendAll(tickets);
 }
 
 // ENTRY POINT FOR TEST MODE
 function toJiraTestMode(e) {
   inTestMode = true
-  for (const role in roleDirectory) {
-    let receivers = roleDirectory[role]
+  for (const role in notifyModule.roleDirectory) {
+    let receivers = notifyModule.roleDirectory[role]
     for (const receiverIndex in receivers) {
       let email = receivers[receiverIndex].email
       let atIndex = email.indexOf('@');
@@ -147,7 +147,7 @@ function sendAndMark(ticketContext) {
   if (notAlreadySent(ticketContext.rowIndex)) {
     ticketContext.sendResponse = sendOne(ticketContext)
     markSent(ticketContext)
-    dispatch(ticketContext)
+    notifyModule.dispatch(ticketContext)
   }
 }
 
@@ -197,58 +197,66 @@ function mark(ticketRowIndex, columnIndex, value) {
 ////////////////////////// DISPATCH ///////////////////////////
 ////////////////////////// DISPATCH ///////////////////////////
 
-let roleDirectory = {
-  3735: [
-    {"name": "Luis", "email": "luis.chepen+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
-  ],
-  3737: [
-    {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
-    {"name": "Yan", "email": "yan.michaud.ym+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
-  ],
-  3739: [
-    {"name": "Geneviève", "email": "genevieve.alliance+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
-  ],
-  3743: [
-    {"name": "Monika", "email": "mgutkowska2+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
-  ],
-  3745: [
-    {"name": "Diego A", "email": "diegoabellap+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
-  ],
-  urgence: [
-    {"name": "Monica", "email": "mgutkowska2+intake@gmail.com"},
-  ],
-  triage: []
-}
+let notifyModule = (function () {
+  let roleDirectory = {
+    3735: [
+      {"name": "Luis", "email": "luis.chepen+intake@gmail.com"},
+      {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+      {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+    ],
+    3737: [
+      {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
+      {"name": "Yan", "email": "yan.michaud.ym+intake@gmail.com"},
+      {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+      {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+    ],
+    3739: [
+      {"name": "Geneviève", "email": "genevieve.alliance+intake@gmail.com"},
+      {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+      {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+    ],
+    3743: [
+      {"name": "Monika", "email": "mgutkowska2+intake@gmail.com"},
+      {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+      {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+    ],
+    3745: [
+      {"name": "Diego A", "email": "diegoabellap+intake@gmail.com"},
+      {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+      {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+    ],
+    urgence: [
+      {"name": "Monica", "email": "mgutkowska2+intake@gmail.com"},
+    ],
+    triage: []
+  }
 
-function createNotificationEmail(ticketContext) {
-  let building = ticketContext.formData.building
-  let buildingReps = roleDirectory[ticketContext.formData.building]
-  let buildingRepEmails = buildingReps.map(br => renderBuildingRepEmail(br, building, ticketContext))
-  let urgenceEmails = renderUrgenceEmails(ticketContext)
-  return buildingRepEmails.concat(urgenceEmails);
-}
+  function createNotificationEmail(ticketContext) {
+    let building = ticketContext.formData.building
+    let buildingReps = roleDirectory[ticketContext.formData.building]
+    let buildingRepEmails = buildingReps.map(br => renderBuildingRepEmail(br, building, ticketContext))
+    let urgenceEmails = renderUrgenceEmails(ticketContext)
+    return buildingRepEmails.concat(urgenceEmails);
+  }
 
-function dispatch(ticketContext) {
-  let emails = createNotificationEmail(ticketContext);
-  emails.map(email => MailApp.sendEmail(email))
-}
+  function renderSubjectForEmail(ticketContext) {
+    return testModePrefix + (
+        isUrgent(ticketContext) ?
+            "URGENT maintenance report from " + ticketContext.formData.reporter :
+            "Maintenance report from " + ticketContext.formData.reporter
+    )
+  }
 
-function renderBuildingRepEmail(br, building, ticketContext) {
-  let emailBody =
-      `Dear ${br.name}
+  function renderTicketForEmail(ticketContext) {
+    return summarize(ticketContext.formData) + "\n" + ticketContext.formData.description
+  }
+
+  function renderBuildingRepEmail(br, building, ticketContext) {
+    let emailBody =
+        `Dear ${br.name}
 
   Please be informed that ${ticketContext.formData.reporter} has submitted ${
-          isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
+            isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
@@ -256,17 +264,16 @@ function renderBuildingRepEmail(br, building, ticketContext) {
   You are receiving this email because you are a building representative for ${building}. 
   
   `
-
-  return {
-    to: br.email,
-    subject: renderSubjectForEmail(ticketContext),
-    body: emailBody
+    return {
+      to: br.email,
+      subject: renderSubjectForEmail(ticketContext),
+      body: emailBody
+    }
   }
-}
 
-function renderUrgenceEmails(ticketContext) {
-  function renderUrgenceEmail(recipient) {
-    let emailBody = `Dear ${recipient.name}
+  function renderUrgenceEmails(ticketContext) {
+    function renderUrgenceEmail(recipient) {
+      let emailBody = `Dear ${recipient.name}
 
   Please be informed that ${ticketContext.formData.reporter} has submitted an URGENT maintenance report:
   ------------------
@@ -277,35 +284,34 @@ function renderUrgenceEmails(ticketContext) {
   
   `
 
-    return {
-      to: recipient.email,
-      subject: renderSubjectForEmail(ticketContext),
-      body: emailBody
+      return {
+        to: recipient.email,
+        subject: renderSubjectForEmail(ticketContext),
+        body: emailBody
+      }
+    }
+
+    if (isUrgent(ticketContext)) {
+      return roleDirectory.urgence.map(ur => renderUrgenceEmail(ur))
+    } else {
+      return []
     }
   }
 
-  if (isUrgent(ticketContext)) {
-    return roleDirectory.urgence.map(ur => renderUrgenceEmail(ur))
-  } else {
-    return []
+  function isUrgent(ticketContext) {
+    return ticketContext.formData.priority === jiraPriorityUrgent;
   }
-}
 
-function isUrgent(ticketContext) {
-  return ticketContext.formData.priority === jiraPriorityUrgent;
-}
-
-function renderSubjectForEmail(ticketContext) {
-  return testModePrefix + (
-      isUrgent(ticketContext) ?
-          "URGENT maintenance report from " + ticketContext.formData.reporter :
-          "Maintenance report from " + ticketContext.formData.reporter
-  )
-}
-
-function renderTicketForEmail(ticketContext) {
-  return summarize(ticketContext.formData) + "\n" + ticketContext.formData.description
-}
+  return {
+    get roleDirectory() {
+      return roleDirectory
+    },
+    dispatch(ticketContext) {
+      let emails = createNotificationEmail(ticketContext);
+      emails.map(email => MailApp.sendEmail(email))
+    }
+  }
+})()
 
 function loadJiraBasicAuthToken() {
   let rootFolder = DriveApp.getRootFolder()
@@ -319,6 +325,6 @@ function loadJiraBasicAuthToken() {
 if (typeof module !== 'undefined') {
   module.exports.toJira = toJira
   module.exports.toJiraTestMode = toJiraTestMode
-  module.exports.roleDirectory = roleDirectory
+  module.exports.roleDirectory = notifyModule.roleDirectory
   module.exports.responseFieldLabels = responseFieldLabels
 }
