@@ -196,7 +196,7 @@ expect.extend({
         issuetype: {
           name: 'Intake'
         },
-        summary: mock.summaryLine(),
+        summary: ticketParts.summary,
         description: `${description}\n\nReported by ${submittedBy}`,
         priority: {
           name: ticketParts.isUrgent ? "Urgent" : "Medium"
@@ -254,7 +254,10 @@ test("End to end, urgent", () => {
   expect(mock.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
   // verify jira ticket
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: true})
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    isUrgent: true,
+    summary: mock.summaryLine()
+  })
 
   // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
@@ -283,7 +286,10 @@ test("End to end, non-urgent", () => {
   intake.toJira(null);
 
   // verify jira ticket
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({isUrgent: false})
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    isUrgent: false,
+    summary: mock.summaryLine()
+  })
 
   // verify sent notifications
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
@@ -298,9 +304,32 @@ test("End to end, non-urgent", () => {
 })
 
 test("Test-mode", () => {
-  // when jirafy invoked in test mode,
-  // same as end-to-end test except
-  // jira tickets have TEST prefixed to description
-  // all email goes to daniil.alliance+other.person@gmail.com
+  mock.responseValues = urgentResponseValues
+
+  intake.toJiraTestMode();
+
+  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    isUrgent: true,
+    summary: "TEST - " + mock.summaryLine()
+  })
+
+  expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
+    to: 'daniil.alliance+yassaoubangoura@gmail.com',
+    subject: 'TEST - URGENT maintenance report from Diego Briceño',
+    bodyParts: {
+      recipientName: "Moussa",
+      reasonForReceiving: "you are a building representative for 3737",
+      isUrgent: true
+    }
+  })
+  expect(global.MailApp.sendEmail.mock.calls[4]).emailSent({
+    to: 'daniil.alliance+mgutkowska2+intake@gmail.com',
+    subject: 'TEST - URGENT maintenance report from Diego Briceño',
+    bodyParts: {
+      recipientName: "Monica",
+      reasonForReceiving: "you are an Urgence-level responder",
+      isUrgent: true
+    }
+  })
 
 })
