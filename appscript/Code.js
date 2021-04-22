@@ -65,6 +65,7 @@ class FormData {
 }
 
 // ENTRY POINT
+// noinspection JSUnusedLocalSymbols
 function toJira(e) {
   init()
   let numRows = responsesSheet.getLastRow();
@@ -73,7 +74,7 @@ function toJira(e) {
   let rowOffset = 2 // 1 for header & 1 for starting count from 1
   let tickets = dataRange.getValues().
       map((r, i) => new FormData(r, i + rowOffset)).
-      map((f) => new TicketContext(asTicket(f), f))
+      map((f) => new TicketContext(jiraModule.asTicket(f), f))
   sendAll(tickets);
 }
 
@@ -109,46 +110,16 @@ function indexFields(headerRow) {
   return Object.fromEntries(entries)
 }
 
-// must deserialize to com.atlassian.jira.rest.v2.issue.IssueUpdateBean
-// https://docs.atlassian.com/software/jira/docs/api/7.2.2/com/atlassian/jira/rest/v2/issue/IssueUpdateBean.html
-function asTicket(formData) {
-  return {
-    "fields": {
-      "project": {
-        "key": "TRIAG"
-      },
-      "summary": testModePrefix + summarize(formData),
-      "description": createDescription(formData),
-      // "customfield_10038": {"id": 10033}, // building
-      // "Area": formData.area,
-      "priority": {"name": formData.priority},
-      "issuetype": {
-        "name": "Intake"
-      }
-    }
-  };
-}
-
-function summarize(formData) {
-  return formData.building + " " + formData.area + ": " + formData.summary
-}
-
-function createDescription(formData) {
-  return formData.description + "\n\n" +
-      "Reported by " + formData.reporter;
-}
-
 // input is [TicketContext, ...]
 function sendAll(tickets) {
-  tickets.map(ticketContext => sendAndMark(ticketContext))
+  tickets.filter(ticketContext => notAlreadySent(ticketContext.rowIndex))
+         .map(ticketContext => sendAndMark(ticketContext))
 }
 
 function sendAndMark(ticketContext) {
-  if (notAlreadySent(ticketContext.rowIndex)) {
-    ticketContext.sendResponse = sendOne(ticketContext)
-    markSent(ticketContext)
-    notifyModule.dispatch(ticketContext)
-  }
+  jiraModule.sendOne(ticketContext)
+  notifyModule.dispatch(ticketContext)
+  markSent(ticketContext)
 }
 
 function notAlreadySent(ticketRowIndex) {
@@ -156,42 +127,77 @@ function notAlreadySent(ticketRowIndex) {
   return timestampValue === "";
 }
 
-function sendOne(ticketContext) {
-  let payload = JSON.stringify(ticketContext.jiraTicket);
-  let url = "https://lalliance.atlassian.net/rest/api/latest/issue"
-  let headers = {
-    "content-type": "application/json",
-    "Accept": "application/json",
-    "authorization": "Basic " + jiraBasicAuthToken
-  };
-
-  let options = {
-    "content-type": "application/json",
-    "method": "POST",
-    "headers": headers,
-    "payload": payload
-  };
-
-  return UrlFetchApp.fetch(url, options);
-}
-
 function markSent(ticketContext) {
-  let contentJson = JSON.parse(ticketContext.sendResponse.getContentText())
-  let issueKey = contentJson.key
-  let link = contentJson.self
-  ticketContext.jiraTicketRestLink = link
-  ticketContext.jiraTicketUserLink = "https://lalliance.atlassian.net/browse/" + issueKey
-  ticketContext.jiraTicketKey = issueKey
   let ticketRowIndex = ticketContext.rowIndex
   mark(ticketRowIndex, 1, new Date().toISOString())
-  mark(ticketRowIndex, 2, issueKey)
-  mark(ticketRowIndex, 3, link)
+  mark(ticketRowIndex, 2, ticketContext.jiraTicketKey)
+  mark(ticketRowIndex, 3, ticketContext.jiraTicketRestLink)
 
 }
 
 function mark(ticketRowIndex, columnIndex, value) {
   logSheet.getRange(ticketRowIndex, columnIndex).setValue(value)
 }
+
+function summarize(formData) {
+  return formData.building + " " + formData.area + ": " + formData.summary
+}
+
+let jiraModule = (function () {
+
+  function createDescription(formData) {
+    return formData.description + "\n\n" +
+        "Reported by " + formData.reporter;
+  }
+
+  function parseJiraResponse(httpResponse, ticketContext) {
+    let contentJson = JSON.parse(httpResponse.getContentText())
+    ticketContext.jiraTicketRestLink = contentJson.self
+    ticketContext.jiraTicketUserLink = "https://lalliance.atlassian.net/browse/" + contentJson.key
+    ticketContext.jiraTicketKey = contentJson.key
+  }
+
+  return {
+    sendOne(ticketContext) {
+      let payload = JSON.stringify(ticketContext.jiraTicket);
+      let url = "https://lalliance.atlassian.net/rest/api/latest/issue"
+      let headers = {
+        "content-type": "application/json",
+        "Accept": "application/json",
+        "authorization": "Basic " + jiraBasicAuthToken
+      };
+
+      let options = {
+        "content-type": "application/json",
+        "method": "POST",
+        "headers": headers,
+        "payload": payload
+      };
+
+      let httpResponse = UrlFetchApp.fetch(url, options);
+      parseJiraResponse(httpResponse, ticketContext);
+    },
+    // must deserialize to com.atlassian.jira.rest.v2.issue.IssueUpdateBean
+    // https://docs.atlassian.com/software/jira/docs/api/7.2.2/com/atlassian/jira/rest/v2/issue/IssueUpdateBean.html
+    asTicket(formData) {
+      return {
+        "fields": {
+          "project": {
+            "key": "TRIAG"
+          },
+          "summary": testModePrefix + summarize(formData),
+          "description": createDescription(formData),
+          // "customfield_10038": {"id": 10033}, // building
+          // "Area": formData.area,
+          "priority": {"name": formData.priority},
+          "issuetype": {
+            "name": "Intake"
+          }
+        }
+      };
+    }
+  }
+})()
 
 ////////////////////////// DISPATCH ///////////////////////////
 ////////////////////////// DISPATCH ///////////////////////////

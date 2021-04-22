@@ -111,6 +111,7 @@ mock = {
   }
 }
 
+// noinspection JSUnusedGlobalSymbols
 /** @type {GoogleAppsScript.Spreadsheet.SpreadsheetApp} */
 global.SpreadsheetApp = {
   getActive: () => ({
@@ -135,6 +136,7 @@ iter = (value) => ({
   next: () => value
 })
 
+// noinspection JSUnusedGlobalSymbols
 /** @type {GoogleAppsScript.Drive.DriveApp} */
 global.DriveApp = {
   getRootFolder: () => ({
