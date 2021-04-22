@@ -112,36 +112,37 @@ function indexFields(headerRow) {
 
 // input is [TicketContext, ...]
 function sendAll(tickets) {
-  tickets.filter(ticketContext => notAlreadySent(ticketContext.rowIndex))
-         .map(ticketContext => sendAndMark(ticketContext))
+  tickets.filter(stateModule.notAlreadySent).map(sendAndMark)
 }
 
 function sendAndMark(ticketContext) {
   jiraModule.sendOne(ticketContext)
   notifyModule.dispatch(ticketContext)
-  markSent(ticketContext)
-}
-
-function notAlreadySent(ticketRowIndex) {
-  let timestampValue = logSheet.getRange(ticketRowIndex, 1).getValue();
-  return timestampValue === "";
-}
-
-function markSent(ticketContext) {
-  let ticketRowIndex = ticketContext.rowIndex
-  mark(ticketRowIndex, 1, new Date().toISOString())
-  mark(ticketRowIndex, 2, ticketContext.jiraTicketKey)
-  mark(ticketRowIndex, 3, ticketContext.jiraTicketRestLink)
-
-}
-
-function mark(ticketRowIndex, columnIndex, value) {
-  logSheet.getRange(ticketRowIndex, columnIndex).setValue(value)
+  stateModule.markSent(ticketContext)
 }
 
 function summarize(formData) {
   return formData.building + " " + formData.area + ": " + formData.summary
 }
+
+let stateModule = (function () {
+  function mark(ticketRowIndex, columnIndex, value) {
+    logSheet.getRange(ticketRowIndex, columnIndex).setValue(value)
+  }
+
+  return {
+    notAlreadySent(ticketContext) {
+      let timestampValue = logSheet.getRange(ticketContext.rowIndex, 1).getValue();
+      return timestampValue === "";
+    },
+    markSent(ticketContext) {
+      let ticketRowIndex = ticketContext.rowIndex
+      mark(ticketRowIndex, 1, new Date().toISOString())
+      mark(ticketRowIndex, 2, ticketContext.jiraTicketKey)
+      mark(ticketRowIndex, 3, ticketContext.jiraTicketRestLink)
+    }
+  }
+})()
 
 let jiraModule = (function () {
 
@@ -198,10 +199,6 @@ let jiraModule = (function () {
     }
   }
 })()
-
-////////////////////////// DISPATCH ///////////////////////////
-////////////////////////// DISPATCH ///////////////////////////
-////////////////////////// DISPATCH ///////////////////////////
 
 let notifyModule = (function () {
   let roleDirectory = {
