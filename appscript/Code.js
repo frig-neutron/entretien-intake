@@ -26,7 +26,7 @@ function init() {
   responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
   logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
   columnIndex = indexResponseFields(responsesSheet)
-  jiraBasicAuthToken = loadJiraBasicAuthToken()
+  jiraBasicAuthToken = gDriveModule.loadJiraBasicAuthToken()
 }
 
 class TicketContext {
@@ -319,13 +319,17 @@ let notifyModule = (function () {
   }
 })()
 
-function loadJiraBasicAuthToken() {
-  let rootFolder = DriveApp.getRootFolder()
-  let jiraFolder = rootFolder.getFoldersByName("jira").next()
-  let tokenFile = jiraFolder.getFilesByName("jira-basic-auth-token").next()
-  let blob = tokenFile.getBlob();
-  return blob.getDataAsString().trim();
-}
+let gDriveModule = (function () {
+  return {
+    loadJiraBasicAuthToken() {
+      let rootFolder = DriveApp.getRootFolder()
+      let jiraFolder = rootFolder.getFoldersByName("jira").next()
+      let tokenFile = jiraFolder.getFilesByName("jira-basic-auth-token").next()
+      let blob = tokenFile.getBlob();
+      return blob.getDataAsString().trim();
+    }
+  }
+})()
 
 // for testing
 if (typeof module !== 'undefined') {
