@@ -266,6 +266,7 @@ let notifyModule = (function () {
   Jira ticket ${ticketContext.jiraTicketUserLink} has been assigned to this report.
   You are receiving this email because you are a building representative for ${building}. 
   
+  This automatic notification was sent by the entretien intake form.
   `
     return {
       to: br.email,
@@ -285,6 +286,7 @@ let notifyModule = (function () {
   Jira ticket ${ticketContext.jiraTicketUserLink} has been assigned to this report.
   You are receiving this email because you are an Urgence-level responder. 
   
+  This automatic notification was sent by the entretien intake form.
   `
 
       return {
