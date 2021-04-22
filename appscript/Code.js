@@ -51,8 +51,7 @@ class FormData {
     this.description = rowFieldValue(responseFieldLabels.description)
     this.area = rowFieldValue(responseFieldLabels.area)
     this.reporter = rowFieldValue(responseFieldLabels.reportedBy)
-    this.priority = this.mapFormToJiraPriority(rowFieldValue(responseFieldLabels.priority)
-    )
+    this.priority = this.mapFormToJiraPriority(rowFieldValue(responseFieldLabels.priority))
   }
 
   mapFormToJiraPriority(formPriorityValue) {
@@ -74,7 +73,7 @@ function toJira(e) {
   let rowOffset = 2 // 1 for header & 1 for starting count from 1
   let tickets = dataRange.getValues().
       map((r, i) => new FormData(r, i + rowOffset)).
-      map((f) => new TicketContext(jiraModule.asTicket(f), f))
+      map((f) => new TicketContext(jiraModule.formToJiraStruct(f), f))
   sendAll(tickets);
 }
 
@@ -112,13 +111,14 @@ function indexFields(headerRow) {
 
 /** @param {TicketContext[]} tickets */
 function sendAll(tickets) {
-  tickets.filter(stateModule.notAlreadySent).map(sendAndMark)
+  tickets.filter(stateModule.notAlreadyProcessed).map(sendAndMarkProcessed)
 }
 
-function sendAndMark(ticketContext) {
-  jiraModule.sendOne(ticketContext)
+/** @param {TicketContext} ticketContext */
+function sendAndMarkProcessed(ticketContext) {
+  jiraModule.createJiraTicket(ticketContext)
   notifyModule.dispatch(ticketContext)
-  stateModule.markSent(ticketContext)
+  stateModule.markProcessed(ticketContext)
 }
 
 function summarize(formData) {
@@ -131,11 +131,11 @@ let stateModule = (function () {
   }
 
   return {
-    notAlreadySent(ticketContext) {
+    notAlreadyProcessed(ticketContext) {
       let timestampValue = logSheet.getRange(ticketContext.rowIndex, 1).getValue();
       return timestampValue === "";
     },
-    markSent(ticketContext) {
+    markProcessed(ticketContext) {
       let ticketRowIndex = ticketContext.rowIndex
       mark(ticketRowIndex, 1, new Date().toISOString())
       mark(ticketRowIndex, 2, ticketContext.jiraTicketKey)
@@ -159,8 +159,7 @@ let jiraModule = (function () {
   }
 
   return {
-    sendOne(ticketContext) {
-      let payload = JSON.stringify(ticketContext.jiraTicket);
+    createJiraTicket(ticketContext) {
       let url = "https://lalliance.atlassian.net/rest/api/latest/issue"
       let headers = {
         "content-type": "application/json",
@@ -168,6 +167,7 @@ let jiraModule = (function () {
         "authorization": "Basic " + jiraBasicAuthToken
       };
 
+      let payload = JSON.stringify(ticketContext.jiraTicket);
       let options = {
         "content-type": "application/json",
         "method": "POST",
@@ -180,7 +180,7 @@ let jiraModule = (function () {
     },
     // must deserialize to com.atlassian.jira.rest.v2.issue.IssueUpdateBean
     // https://docs.atlassian.com/software/jira/docs/api/7.2.2/com/atlassian/jira/rest/v2/issue/IssueUpdateBean.html
-    asTicket(formData) {
+    formToJiraStruct(formData) {
       return {
         "fields": {
           "project": {
