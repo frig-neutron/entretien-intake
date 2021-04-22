@@ -110,7 +110,7 @@ function indexFields(headerRow) {
   return Object.fromEntries(entries)
 }
 
-// input is [TicketContext, ...]
+/** @param {TicketContext[]} tickets */
 function sendAll(tickets) {
   tickets.filter(stateModule.notAlreadySent).map(sendAndMark)
 }
