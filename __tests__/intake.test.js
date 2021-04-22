@@ -36,9 +36,9 @@ mock = {
     )
   },
   summaryLine() {
-    let building = mock.responseMap()[intake.responseFieldLabels.building]
-    let area = mock.responseMap()[intake.responseFieldLabels.area]
-    let shortSummary = mock.responseMap()[intake.responseFieldLabels.element]
+    let building = mock.responseMap()[intake.responseHeaders.building]
+    let area = mock.responseMap()[intake.responseHeaders.area]
+    let shortSummary = mock.responseMap()[intake.responseHeaders.element]
 
     return building + " " + area + ": " + shortSummary
   },
@@ -180,8 +180,8 @@ expect.extend({
   filesJiraTicket(received, ticketParts) {
     let [url, options] = received
     let payload = JSON.parse(options.payload)
-    let submittedBy = mock.responseMap()[intake.responseFieldLabels.reportedBy]
-    let description = mock.responseMap()[intake.responseFieldLabels.description]
+    let submittedBy = mock.responseMap()[intake.responseHeaders.reportedBy]
+    let description = mock.responseMap()[intake.responseHeaders.description]
 
     expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
     expect(options).toMatchObject({
@@ -214,8 +214,8 @@ expect.extend({
     }
   },
   emailBody(received, bodyParts) {
-    let submittedBy = mock.responseMap()[intake.responseFieldLabels.reportedBy]
-    let description = mock.responseMap()[intake.responseFieldLabels.description]
+    let submittedBy = mock.responseMap()[intake.responseHeaders.reportedBy]
+    let description = mock.responseMap()[intake.responseHeaders.description]
 
     if (bodyParts.isUrgent) {
       expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))

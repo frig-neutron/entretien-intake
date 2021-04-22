@@ -6,26 +6,19 @@ let responsesSheet
 
 /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
 let logSheet
-let columnIndex
 let jiraBasicAuthToken
 const jiraPriorityUrgent = "Urgent"
 const jiraPriorityMedium = "Medium"
-const responseFieldLabels = {
-  building: "Bâtiment",
-  element: "Elément",
-  description: "Description",
-  area: "Zone",
-  reportedBy: "Rapporté par",
-  priority: "Priorité"
-}
 
 /**
  * Delayed init or unit tests won't run b/c of missing symbols
  */
 function init() {
+  // todo: the sheets and tokens should be fields in their respective modules
+  // ... can't do it now though b/c they evaluate before I can mock them in tests
+  // ... need to defer initialization, or something ...
   responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
   logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
-  columnIndex = indexResponseFields(responsesSheet)
   jiraBasicAuthToken = gDriveModule.loadJiraBasicAuthToken()
 }
 
@@ -38,42 +31,12 @@ class TicketContext {
   }
 }
 
-class FormData {
-
-  constructor(rowData, rowIndex) {
-    function rowFieldValue(fieldName) {
-      return rowData[columnIndex[fieldName]]
-    }
-
-    this.rowIndex = rowIndex
-    this.building = rowFieldValue(responseFieldLabels.building)
-    this.summary = rowFieldValue(responseFieldLabels.element)
-    this.description = rowFieldValue(responseFieldLabels.description)
-    this.area = rowFieldValue(responseFieldLabels.area)
-    this.reporter = rowFieldValue(responseFieldLabels.reportedBy)
-    this.priority = this.mapFormToJiraPriority(rowFieldValue(responseFieldLabels.priority))
-  }
-
-  mapFormToJiraPriority(formPriorityValue) {
-    if (formPriorityValue.startsWith("Urgent")) {
-      return jiraPriorityUrgent
-    } else {
-      return jiraPriorityMedium
-    }
-  }
-}
-
 // ENTRY POINT
 // noinspection JSUnusedLocalSymbols
 function toJira(e) {
   init()
-  let numRows = responsesSheet.getLastRow();
-  let dataRange = responsesSheet.getRange(2, 1, numRows - 1, responsesSheet.getLastColumn())
-
-  let rowOffset = 2 // 1 for header & 1 for starting count from 1
-  let tickets = dataRange.getValues().
-      map((r, i) => new FormData(r, i + rowOffset)).
-      map((f) => new TicketContext(jiraModule.formToJiraStruct(f), f))
+  let forms = responsesModule.makeForms();
+  let tickets = forms.map((f) => new TicketContext(jiraModule.formToJiraStruct(f), f))
   sendAll(tickets);
 }
 
@@ -92,23 +55,6 @@ function toJiraTestMode(e) {
   toJira(e)
 }
 
-function indexResponseFields() {
-  let headerValues = getHeaderValues()
-  return indexFields(headerValues);
-}
-
-function getHeaderValues() {
-  let nCols = responsesSheet.getLastColumn()
-  let headerRange = responsesSheet.getRange(1, 1, 1, nCols)
-  return headerRange.getValues()[0]
-}
-
-// return {fieldName: columnIndex} object
-function indexFields(headerRow) {
-  let entries = headerRow.map((e, i) => [e, i])
-  return Object.fromEntries(entries)
-}
-
 /** @param {TicketContext[]} tickets */
 function sendAll(tickets) {
   tickets.filter(stateModule.notAlreadyProcessed).map(sendAndMarkProcessed)
@@ -124,6 +70,76 @@ function sendAndMarkProcessed(ticketContext) {
 function summarize(formData) {
   return formData.building + " " + formData.area + ": " + formData.summary
 }
+
+let responsesModule = (function () {
+
+  const responseFieldLabels = {
+    building: "Bâtiment",
+    element: "Elément",
+    description: "Description",
+    area: "Zone",
+    reportedBy: "Rapporté par",
+    priority: "Priorité"
+  }
+
+  class FormData {
+
+    constructor(rowData, rowIndex) {
+      let columnIndex = indexResponseFields()
+
+      function rowFieldValue(fieldName) {
+        return rowData[columnIndex[fieldName]]
+      }
+
+      this.rowIndex = rowIndex
+      this.building = rowFieldValue(responseFieldLabels.building)
+      this.summary = rowFieldValue(responseFieldLabels.element)
+      this.description = rowFieldValue(responseFieldLabels.description)
+      this.area = rowFieldValue(responseFieldLabels.area)
+      this.reporter = rowFieldValue(responseFieldLabels.reportedBy)
+      this.priority = this.mapFormToJiraPriority(rowFieldValue(responseFieldLabels.priority))
+    }
+
+    mapFormToJiraPriority(formPriorityValue) {
+      if (formPriorityValue.startsWith("Urgent")) {
+        return jiraPriorityUrgent
+      } else {
+        return jiraPriorityMedium
+      }
+    }
+  }
+
+  function indexResponseFields() {
+    let headerValues = getHeaderValues()
+    return indexFields(headerValues);
+  }
+
+  function getHeaderValues() {
+    let nCols = responsesSheet.getLastColumn()
+    let headerRange = responsesSheet.getRange(1, 1, 1, nCols)
+    return headerRange.getValues()[0]
+  }
+
+  function mkForm(rowData, index){
+    let rowOffset = 2 // 1 for header & 1 for starting count from 1
+    return new FormData(rowData, index + rowOffset)
+  }
+
+  // return {fieldName: columnIndex} object
+  function indexFields(headerRow) {
+    let entries = headerRow.map((e, i) => [e, i])
+    return Object.fromEntries(entries)
+  }
+
+  return {
+    responseHeaders: responseFieldLabels,
+    makeForms() {
+      let numRows = responsesSheet.getLastRow();
+      let dataRange = responsesSheet.getRange(2, 1, numRows - 1, responsesSheet.getLastColumn())
+      return dataRange.getValues().map(mkForm);
+    }
+  }
+})()
 
 let stateModule = (function () {
   function mark(ticketRowIndex, columnIndex, value) {
@@ -335,5 +351,5 @@ if (typeof module !== 'undefined') {
   module.exports.toJira = toJira
   module.exports.toJiraTestMode = toJiraTestMode
   module.exports.roleDirectory = notifyModule.roleDirectory
-  module.exports.responseFieldLabels = responseFieldLabels
+  module.exports.responseHeaders = responsesModule.responseHeaders
 }
