@@ -23,6 +23,10 @@ let nonUrgentResponseValues = [
 firstResponseRow = 2
 unprocessedRowTimestamp = ""
 
+function resetMockObject(){ // runs beforeEach
+  mock.responseLogTimestamp = unprocessedRowTimestamp
+}
+
 // noinspection JSUnusedGlobalSymbols
 mock = {
   responseValues: [],
@@ -244,6 +248,8 @@ expect.extend({
   }
 })
 
+beforeEach(resetMockObject)
+
 test("End to end, urgent", () => {
   mock.responseValues = urgentResponseValues
   let timestampLike = /....-..-..T..:..:..\....Z/;
@@ -303,6 +309,17 @@ test("End to end, non-urgent", () => {
       isUrgent: false
     }
   })
+})
+
+test("Skip processing if form response already sent", () => {
+  mock.responseValues = nonUrgentResponseValues
+  mock.responseLogTimestamp = "In the year: 2525"
+
+  intake.toJira(null);
+
+  expect(mock.logTimestampRange.setValue.mock.calls.length).toEqual(0)
+  expect(global.UrlFetchApp.fetch.mock.calls.length).toEqual(0)
+  expect(global.MailApp.sendEmail.mock.calls.length).toEqual(0)
 })
 
 test("Test-mode", () => {
