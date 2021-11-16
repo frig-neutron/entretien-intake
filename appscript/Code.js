@@ -205,7 +205,7 @@ let roleDirectory = {
   ],
   3737: [
     {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
-    {"name": "Yan", "email": "yan.michaud.ym+intake@gmail.com"},
+    {"name": "Emmanuelle", "email": "emmanuelleraynauld@gmail.com+intake@gmail.com"},
     {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
     {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
