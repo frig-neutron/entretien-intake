@@ -314,7 +314,7 @@ test("Test-mode", () => {
   })
 
   expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
-    to: 'daniil.alliance+yassaoubangoura@gmail.com',
+    to: 'frig.neutron+yassaoubangoura@gmail.com',
     subject: 'TEST - URGENT maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Moussa",
@@ -323,7 +323,7 @@ test("Test-mode", () => {
     }
   })
   expect(global.MailApp.sendEmail.mock.calls[4]).emailSent({
-    to: 'daniil.alliance+mgutkowska2+intake@gmail.com',
+    to: 'frig.neutron+mgutkowska2+intake@gmail.com',
     subject: 'TEST - URGENT maintenance report from Diego Briceño',
     bodyParts: {
       recipientName: "Monica",

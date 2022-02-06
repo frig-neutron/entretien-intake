@@ -85,7 +85,7 @@ function toJiraTestMode(e) {
     for (const receiverIndex in receivers) {
       let email = receivers[receiverIndex].email
       let atIndex = email.indexOf('@');
-      receivers[receiverIndex].email = "daniil.alliance+" + email.substring(0, atIndex) + "@gmail.com"
+      receivers[receiverIndex].email = "frig.neutron+" + email.substring(0, atIndex) + "@gmail.com"
     }
   }
   testModePrefix = "TEST - "
@@ -205,12 +205,12 @@ let roleDirectory = {
   ],
   3737: [
     {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
-    {"name": "Emmanuelle", "email": "emmanuelleraynauld@gmail.com+intake@gmail.com"},
+    {"name": "Emmanuelle", "email": "emmanuelleraynauld+intake@gmail.com"},
     {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
     {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
   3739: [
-    {"name": "Geneviève", "email": "genevieve.alliance+intake@gmail.com"},
+    {"name": "Kris", "email": "kris.onishi@mcgill.ca"},
     {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
     {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
