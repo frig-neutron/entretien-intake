@@ -229,13 +229,54 @@ expect.extend({
       pass: true,
     }
   },
-  emailSent(received, matchers) {
+  /**
+   * Passes is this call sends this email
+   * @param received - Jest call object
+   * @param emailSpec
+   */
+  callSendsEmail(received, emailSpec) {
     let emailObject = received[0]
     expect(emailObject).toMatchObject({
-      to: matchers.to,
-      subject: matchers.subject,
-      body: expect.emailBody(matchers.bodyParts)
+      to: emailSpec.to,
+      subject: emailSpec.subject,
+      body: expect.emailBody(emailSpec.bodyParts)
     })
+    return {
+      pass: true,
+    }
+  },
+  /**
+   * Passes if at least one call matches emailSpec. (i.e.: if this email is sent by some call)
+   * @param received - array of jest mock calls
+   * @param emailSpec - spec of a single email
+   */
+  someCallSendsEmail(received, emailSpec) {
+    let assertionErrorOrUndefined = received.map(theCall => {
+      try {
+        return expect(theCall).callSendsEmail(emailSpec)
+      } catch (assertionError) {
+        return assertionError
+      }
+    })
+    let isSuccess = (e) => typeof e == "undefined" // no error == success
+    let matchSuccesses = assertionErrorOrUndefined.map(isSuccess);
+    let atLeastOneMatch = matchSuccesses.filter(i => i).length > 0
+    return {
+      pass: atLeastOneMatch,
+      message: () => {
+        let isFailure = (e) => !isSuccess(e)
+        let matchFailures = assertionErrorOrUndefined.filter(isFailure).map(e => e.message)
+        return `No email matches spec ${JSON.stringify(emailSpec, null, 2)}\n` + matchFailures.join("\n")
+      }
+    }
+  },
+  /**
+   * Passes if each email objects is matched by the callSendsEmail matcher. (i.e.: if every email is sent)
+   * @param received - array of Jest mock calls
+   * @param emailSpecs - array of email message specifications
+   */
+  toSendAllEmail(received, ...emailSpecs) {
+    emailSpecs.map(e => expect(received).someCallSendsEmail(e));
     return {
       pass: true,
     }
@@ -260,24 +301,26 @@ test("End to end, urgent", () => {
   })
 
   // verify sent notifications
-  expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
-    to: 'yassaoubangoura@yahoo.fr',
-    subject: 'URGENT maintenance report from Diego Briceño',
-    bodyParts: {
-      recipientName: "Moussa",
-      reasonForReceiving: "you are a building representative for 3737",
-      isUrgent: true
-    }
-  })
-  expect(global.MailApp.sendEmail.mock.calls[4]).emailSent({
-    to: 'mgutkowska2+intake@gmail.com',
-    subject: 'URGENT maintenance report from Diego Briceño',
-    bodyParts: {
-      recipientName: "Monica",
-      reasonForReceiving: "you are an Urgence-level responder",
-      isUrgent: true
-    }
-  })
+  expect(global.MailApp.sendEmail.mock.calls).toSendAllEmail(
+      {
+        to: 'yassaoubangoura@yahoo.fr',
+        subject: 'URGENT maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Moussa",
+          reasonForReceiving: "you are a building representative for 3737",
+          isUrgent: true
+        }
+      },
+      {
+        to: 'mgutkowska2+intake@gmail.com',
+        subject: 'URGENT maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Monica",
+          reasonForReceiving: "you are an Urgence-level responder",
+          isUrgent: true
+        }
+      }
+  )
 })
 
 test("End to end, non-urgent", () => {
@@ -292,7 +335,7 @@ test("End to end, non-urgent", () => {
   })
 
   // verify sent notifications
-  expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
+  expect(global.MailApp.sendEmail.mock.calls[0]).callSendsEmail({
     to: 'yassaoubangoura@yahoo.fr',
     subject: 'Maintenance report from Diego Briceño',
     bodyParts: {
@@ -313,23 +356,23 @@ test("Test-mode", () => {
     summary: "TEST - " + mock.summaryLine()
   })
 
-  expect(global.MailApp.sendEmail.mock.calls[0]).emailSent({
-    to: 'frig.neutron+yassaoubangoura@gmail.com',
-    subject: 'TEST - URGENT maintenance report from Diego Briceño',
-    bodyParts: {
-      recipientName: "Moussa",
-      reasonForReceiving: "you are a building representative for 3737",
-      isUrgent: true
-    }
-  })
-  expect(global.MailApp.sendEmail.mock.calls[4]).emailSent({
-    to: 'frig.neutron+mgutkowska2+intake@gmail.com',
-    subject: 'TEST - URGENT maintenance report from Diego Briceño',
-    bodyParts: {
-      recipientName: "Monica",
-      reasonForReceiving: "you are an Urgence-level responder",
-      isUrgent: true
-    }
-  })
+  expect(global.MailApp.sendEmail.mock.calls).toSendAllEmail(
+      {
+        to: 'frig.neutron+yassaoubangoura@gmail.com',
+        subject: 'TEST - URGENT maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Moussa",
+          reasonForReceiving: "you are a building representative for 3737",
+          isUrgent: true
+        }
+      }, {
+        to: 'frig.neutron+mgutkowska2+intake@gmail.com',
+        subject: 'TEST - URGENT maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Monica",
+          reasonForReceiving: "you are an Urgence-level responder",
+          isUrgent: true
+        }
+      })
 
 })
