@@ -319,6 +319,15 @@ test("End to end, urgent", () => {
           reasonForReceiving: "you are an Urgence-level responder",
           isUrgent: true
         }
+      },
+      {
+        to: 'shkosi@hotmail.com',
+        subject: 'URGENT maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Kosai",
+          reasonForReceiving: "you are a triage responder",
+          isUrgent: true
+        }
       }
   )
 })
@@ -335,15 +344,25 @@ test("End to end, non-urgent", () => {
   })
 
   // verify sent notifications
-  expect(global.MailApp.sendEmail.mock.calls[0]).callSendsEmail({
-    to: 'yassaoubangoura@yahoo.fr',
-    subject: 'Maintenance report from Diego Briceño',
-    bodyParts: {
-      recipientName: "Moussa",
-      reasonForReceiving: "you are a building representative for 3737",
-      isUrgent: false
-    }
-  })
+  expect(global.MailApp.sendEmail.mock.calls).toSendAllEmail({
+        to: 'yassaoubangoura@yahoo.fr',
+        subject: 'Maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Moussa",
+          reasonForReceiving: "you are a building representative for 3737",
+          isUrgent: false
+        }
+      },
+      {
+        to: 'shkosi@hotmail.com',
+        subject: 'Maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Kosai",
+          reasonForReceiving: "you are a triage responder",
+          isUrgent: false
+        }
+      }
+  )
 })
 
 test("Test-mode", () => {
@@ -373,6 +392,15 @@ test("Test-mode", () => {
           reasonForReceiving: "you are an Urgence-level responder",
           isUrgent: true
         }
-      })
-
+      },
+      {
+        to: 'frig.neutron+shkosi@gmail.com',
+        subject: 'TEST - URGENT maintenance report from Diego Briceño',
+        bodyParts: {
+          recipientName: "Kosai",
+          reasonForReceiving: "you are a triage responder",
+          isUrgent: true
+        }
+      }
+  )
 })

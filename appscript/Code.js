@@ -200,34 +200,28 @@ function mark(ticketRowIndex, columnIndex, value) {
 let roleDirectory = {
   3735: [
     {"name": "Luis", "email": "luis.chepen+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
   3737: [
-    {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
     {"name": "Emmanuelle", "email": "emmanuelleraynauld+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
+    {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
   ],
   3739: [
     {"name": "Kris", "email": "kris.onishi@mcgill.ca"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
   3743: [
     {"name": "Monika", "email": "mgutkowska2+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
   3745: [
     {"name": "Diego A", "email": "diegoabellap+intake@gmail.com"},
-    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
-    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"}
   ],
   urgence: [
     {"name": "Monica", "email": "mgutkowska2+intake@gmail.com"},
   ],
-  triage: []
+  triage: [
+    {"name": "Kosai", "email": "shkosi@hotmail.com"},
+    {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"},
+    {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
+  ]
 }
 
 function createNotificationEmail(ticketContext) {
@@ -235,7 +229,8 @@ function createNotificationEmail(ticketContext) {
   let buildingReps = roleDirectory[ticketContext.formData.building]
   let buildingRepEmails = buildingReps.map(br => renderBuildingRepEmail(br, building, ticketContext))
   let urgenceEmails = renderUrgenceEmails(ticketContext)
-  return buildingRepEmails.concat(urgenceEmails);
+  let triageEmails = roleDirectory.triage.map(triager => renderTriageEmail(triager, ticketContext))
+  return buildingRepEmails.concat(triageEmails).concat(urgenceEmails);
 }
 
 function dispatch(ticketContext) {
@@ -243,9 +238,9 @@ function dispatch(ticketContext) {
   emails.map(email => MailApp.sendEmail(email))
 }
 
-function renderBuildingRepEmail(br, building, ticketContext) {
+function renderBuildingRepEmail(recipient, building, ticketContext) {
   let emailBody =
-      `Dear ${br.name}
+      `Dear ${recipient.name}
 
   Please be informed that ${ticketContext.formData.reporter} has submitted ${
     isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
@@ -258,7 +253,28 @@ function renderBuildingRepEmail(br, building, ticketContext) {
   `
 
   return {
-    to: br.email,
+    to: recipient.email,
+    subject: renderSubjectForEmail(ticketContext),
+    body: emailBody
+  }
+}
+
+function renderTriageEmail(recipient, ticketContext) {
+  let emailBody =
+      `Dear ${recipient.name}
+
+  Please be informed that ${ticketContext.formData.reporter} has submitted ${
+    isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
+  ------------------
+  ${renderTicketForEmail(ticketContext)}
+  -----------------
+  Jira ticket ${ticketContext.jiraTicketUserLink} has been assigned to this report.
+  You are receiving this email because you are a triage responder. 
+  
+  `
+
+  return {
+    to: recipient.email,
     subject: renderSubjectForEmail(ticketContext),
     body: emailBody
   }
