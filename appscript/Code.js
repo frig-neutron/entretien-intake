@@ -238,19 +238,22 @@ function dispatch(ticketContext) {
   emails.map(email => MailApp.sendEmail(email))
 }
 
-function renderBuildingRepEmail(recipient, building, ticketContext) {
-  let emailBody =
-      `Dear ${recipient.name}
+const emailBodyTemplate = (recipient, ticketContext, sendReason) =>
+    `Dear ${recipient.name}
 
   Please be informed that ${ticketContext.formData.reporter} has submitted ${
-    isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
+        isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
   ------------------
   ${renderTicketForEmail(ticketContext)}
   -----------------
   Jira ticket ${ticketContext.jiraTicketUserLink} has been assigned to this report.
-  You are receiving this email because you are a building representative for ${building}. 
+  You are receiving this email because ${sendReason}. 
   
   `
+
+function renderBuildingRepEmail(recipient, building, ticketContext) {
+  let emailBody = emailBodyTemplate(recipient, ticketContext,
+      `you are a building representative for ${building}`)
 
   return {
     to: recipient.email,
@@ -260,18 +263,7 @@ function renderBuildingRepEmail(recipient, building, ticketContext) {
 }
 
 function renderTriageEmail(recipient, ticketContext) {
-  let emailBody =
-      `Dear ${recipient.name}
-
-  Please be informed that ${ticketContext.formData.reporter} has submitted ${
-    isUrgent(ticketContext) ? "an URGENT" : "a"} maintenance report:
-  ------------------
-  ${renderTicketForEmail(ticketContext)}
-  -----------------
-  Jira ticket ${ticketContext.jiraTicketUserLink} has been assigned to this report.
-  You are receiving this email because you are a triage responder. 
-  
-  `
+  let emailBody = emailBodyTemplate(recipient, ticketContext, `you are a triage responder`)
 
   return {
     to: recipient.email,
@@ -282,16 +274,7 @@ function renderTriageEmail(recipient, ticketContext) {
 
 function renderUrgenceEmails(ticketContext) {
   function renderUrgenceEmail(recipient) {
-    let emailBody = `Dear ${recipient.name}
-
-  Please be informed that ${ticketContext.formData.reporter} has submitted an URGENT maintenance report:
-  ------------------
-  ${renderTicketForEmail(ticketContext)}
-  -----------------
-  Jira ticket ${ticketContext.jiraTicketUserLink} has been assigned to this report.
-  You are receiving this email because you are an Urgence-level responder. 
-  
-  `
+    let emailBody = emailBodyTemplate(recipient, ticketContext, `you are an Urgence-level responder`)
 
     return {
       to: recipient.email,
