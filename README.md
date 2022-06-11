@@ -6,6 +6,19 @@ Scripts that handle conversion of maintenance intake form responses into Jira ti
  - Install `yarn`
  - `make init`
 
+## "Staging" environment
+
+We only have one Jira instance, so there's no real staging environment. What passes for staging 
+around here is an alternate "test mode" entry point on the script which causes it to
+- prepend `TEST - ` to the Jira ticket and 
+- redirect all email to my email address.
+
+Jira tickets will still appear in the public Jira repository, albeit with a `TEST - ` prefix. 
+These have to be manually cleaned up.
+
+It would be nice if the staging mode deployment would actually deploy an alternate role 
+directory, but perhaps that is too much to ask.
+
 ## Addresses of sheets
 ### Production
  - https://docs.google.com/spreadsheets/d/1bgp0tQi2P6-DLLpFbiABCHKHqIuhnrjk0hxB_sw89iQ/
