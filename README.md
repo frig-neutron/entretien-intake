@@ -1,8 +1,10 @@
-pkg mgr: Yarn
+# Maintenance intake scripts
+
+Scripts that handle conversion of maintenance intake form responses into Jira tickets.
 
 ## Setup
- - login w/ clasp: `npx clasp login` after you `npm install` 
-   everything
+ - Install `yarn`
+ - `make init`
 
 ## Addresses of sheets
 ### Production
