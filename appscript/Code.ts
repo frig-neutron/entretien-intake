@@ -1,12 +1,14 @@
+import URLFetchRequestOptions = GoogleAppsScript.URL_Fetch.URLFetchRequestOptions;
+import HttpHeaders = GoogleAppsScript.URL_Fetch.HttpHeaders;
+import Sheet = GoogleAppsScript.Spreadsheet.Sheet;
+
 let inTestMode = false
 let testModePrefix = ""
 
-/** @type {GoogleAppsScript.Spreadsheet.Sheet} */
-let responsesSheet
+let responsesSheet: Sheet
+let logSheet: Sheet
 
-/** @type {GoogleAppsScript.Spreadsheet.Sheet} */
-let logSheet
-let columnIndex
+let columnIndex: { [k: string]: number }
 let jiraBasicAuthToken
 const jiraPriorityUrgent = "Urgent"
 const jiraPriorityMedium = "Medium"
@@ -25,11 +27,14 @@ const responseFieldLabels = {
 function init() {
   responsesSheet = SpreadsheetApp.getActive().getSheetByName("Form responses 1");
   logSheet = SpreadsheetApp.getActive().getSheetByName("state-of-affairs");
-  columnIndex = indexResponseFields(responsesSheet)
+  columnIndex = indexResponseFields()
   jiraBasicAuthToken = loadJiraBasicAuthToken()
 }
 
 class TicketContext {
+  jiraTicket: unknown
+  formData: unknown
+  rowIndex: number
 
   constructor(jiraTicket, formData) {
     this.jiraTicket = jiraTicket
@@ -39,6 +44,13 @@ class TicketContext {
 }
 
 class FormData {
+  rowIndex: string
+  building: string
+  summary: string
+  description: string
+  area: string
+  reporter: string
+  priority: string
 
   constructor(rowData, rowIndex) {
     function rowFieldValue(fieldName) {
@@ -65,6 +77,7 @@ class FormData {
 }
 
 // ENTRY POINT
+// noinspection JSUnusedLocalSymbols
 function toJira(e) {
   init()
   let numRows = responsesSheet.getLastRow();
@@ -92,20 +105,20 @@ function toJiraTestMode(e) {
   toJira(e)
 }
 
-function indexResponseFields() {
-  let headerValues = getHeaderValues()
+function indexResponseFields(): { [k: string]: number } {
+  const headerValues: string[] = getHeaderValues()
   return indexFields(headerValues);
 }
 
-function getHeaderValues() {
+function getHeaderValues(): string[] {
   let nCols = responsesSheet.getLastColumn()
   let headerRange = responsesSheet.getRange(1, 1, 1, nCols)
   return headerRange.getValues()[0]
 }
 
 // return {fieldName: columnIndex} object
-function indexFields(headerRow) {
-  let entries = headerRow.map((e, i) => [e, i])
+function indexFields(headerRow: string[]): { [k: string]: number } {
+  const entries = new Map(headerRow.map((e, i) => [e, i]))
   return Object.fromEntries(entries)
 }
 
@@ -157,17 +170,17 @@ function notAlreadySent(ticketRowIndex) {
 }
 
 function sendOne(ticketContext) {
-  let payload = JSON.stringify(ticketContext.jiraTicket);
-  let url = "https://lalliance.atlassian.net/rest/api/latest/issue"
-  let headers = {
+  const payload: string = JSON.stringify(ticketContext.jiraTicket);
+  const url = "https://lalliance.atlassian.net/rest/api/latest/issue"
+  const headers: HttpHeaders = {
     "content-type": "application/json",
     "Accept": "application/json",
     "authorization": "Basic " + jiraBasicAuthToken
   };
 
-  let options = {
-    "content-type": "application/json",
-    "method": "POST",
+  const options: URLFetchRequestOptions = {
+    "contentType": "application/json",
+    "method": "post",
     "headers": headers,
     "payload": payload
   };
