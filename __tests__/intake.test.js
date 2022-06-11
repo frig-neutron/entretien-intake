@@ -1,4 +1,4 @@
-intake = require("../appscript/Code")
+intake = require("../build/appscript/Code.js")
 
 let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
 let urgentResponseValues = [
@@ -180,8 +180,8 @@ expect.extend({
     expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
     expect(options).toMatchObject({
       // todo: seems redundant to have multiple content type specs. retest.
-      "content-type": "application/json",
-      "method": "POST",
+      "contentType": "application/json",
+      "method": "post",
       headers: {
         "content-type": "application/json",
         "Accept": "application/json",
