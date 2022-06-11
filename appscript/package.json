@@ -1,0 +1,5 @@
+{
+  "name": "jirafy",
+  "version": "1.0.0",
+  "description": "Clasp fails with NOENT if no package.json found with typescript, so herer we are"
+}
