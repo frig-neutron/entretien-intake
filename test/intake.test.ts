@@ -1,9 +1,9 @@
-import {toJira, toJiraTestMode} from "../build/appscript/Code"
+import {toJira, toJiraTestMode} from "../appscript/Code"
 import MailApp = GoogleAppsScript.Mail.MailApp;
 import SpreadsheetApp = GoogleAppsScript.Spreadsheet.SpreadsheetApp;
 import Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet;
 import Sheet = GoogleAppsScript.Spreadsheet.Sheet;
-import {mock} from "jest-mock-extended";
+import {mock, mockFn} from "jest-mock-extended";
 import Folder = GoogleAppsScript.Drive.Folder;
 import File = GoogleAppsScript.Drive.File;
 import MatcherContext = jest.MatcherContext;
@@ -13,6 +13,8 @@ import CustomMatcherResult = jest.CustomMatcherResult;
 import DriveApp = GoogleAppsScript.Drive.DriveApp;
 import FolderIterator = GoogleAppsScript.Drive.FolderIterator;
 import Blob = GoogleAppsScript.Base.Blob;
+import URLFetchRequestOptions = GoogleAppsScript.URL_Fetch.URLFetchRequestOptions;
+import HTTPResponse = GoogleAppsScript.URL_Fetch.HTTPResponse;
 
 // todo: remove this, duplicated from Code.ts b/c I can't get it to import
 const responseFieldLabels: { [label: string]: string } = {
@@ -198,20 +200,22 @@ const mockDriveApp = mock<DriveApp>({
 })
 global.DriveApp = mockDriveApp
 
-const mockUrlFetchApp = mock<UrlFetchApp>()
+const mockUrlFetchApp = mock<UrlFetchApp>({
+  fetch(url: string): HTTPResponse {
+    return mock<HTTPResponse>({
+          getContentText() {
+            return JSON.stringify({
+              key: mocks.newJiraIssueKey,
+              self: mocks.restUrlBase + mocks.newJiraIssueKey,
+            })
+          }
+        }
+    )
+  }
+})
+
 // noinspection JSUnusedLocalSymbols
-global.UrlFetchApp = {
-  fetch: jest.fn((url, options) => {
-    return {
-      getContentText() {
-        return JSON.stringify({
-          key: mocks.newJiraIssueKey,
-          self: mocks.restUrlBase + mocks.newJiraIssueKey,
-        })
-      }
-    }
-  })
-}
+global.UrlFetchApp = mockUrlFetchApp
 
 
 type TicketParts = {
@@ -231,13 +235,15 @@ declare global {
     interface Matchers<R> {
       filesJiraTicket(ticketParts: TicketParts): CustomMatcherResult,
 
-      emailBody(bodyParts: BodyParts): CustomMatcherResult,
-
       someCallSendsEmail(e: EmailSpec): CustomMatcherResult,
 
       callSendsEmail(e: EmailSpec): CustomMatcherResult,
 
       toSendAllEmail(...emailSpecs: EmailSpec[]): CustomMatcherResult
+    }
+    // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
+    interface Expect {
+      emailBody(bodyParts: BodyParts): CustomMatcherResult
     }
   }
 }
