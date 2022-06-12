@@ -1,12 +1,12 @@
 {
-  "extends": "gts/tsconfig-google.json",
+  "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
     "esModuleInterop": true,
     "lib": [
-      "es2019" // flatmap support
+      "es2019", // flatmap support
     ],
     "rootDir": ".",
-    "outDir": "../build"
+    "outDir": "build"
   },
   "include": [
     "appscript/*",

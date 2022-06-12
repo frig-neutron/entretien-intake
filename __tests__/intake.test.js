@@ -1,4 +1,4 @@
-intake = require("../Code.ts")
+intake = require("../build/appscript/Code.js")
 
 let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
 let urgentResponseValues = [
