@@ -1,4 +1,27 @@
-intake = require("../build/appscript/Code.js")
+import {toJira, toJiraTestMode} from "../build/appscript/Code"
+import MailApp = GoogleAppsScript.Mail.MailApp;
+import SpreadsheetApp = GoogleAppsScript.Spreadsheet.SpreadsheetApp;
+import Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet;
+import Sheet = GoogleAppsScript.Spreadsheet.Sheet;
+import {mockDeep} from "jest-mock-extended";
+import Folder = GoogleAppsScript.Drive.Folder;
+import File = GoogleAppsScript.Drive.File;
+import MatcherContext = jest.MatcherContext;
+import UrlFetchApp = GoogleAppsScript.URL_Fetch.UrlFetchApp;
+import MailAdvancedParameters = GoogleAppsScript.Mail.MailAdvancedParameters;
+import CustomMatcherResult = jest.CustomMatcherResult;
+
+// todo: remove this, duplicated from Code.ts b/c I can't get it to import
+const responseFieldLabels: { [label: string]: string } = {
+  building: "Bâtiment",
+  element: "Elément",
+  description: "Description",
+  area: "Zone",
+  reportedBy: "Rapporté par",
+  priority: "Priorité"
+}
+
+declare var global: typeof globalThis; // can't use @types/node
 
 let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
 let urgentResponseValues = [
@@ -20,21 +43,21 @@ let nonUrgentResponseValues = [
   "chauffe-eau"
 ]
 
-firstResponseRow = 2
-unprocessedRowTimestamp = ""
+let firstResponseRow = 2
+let unprocessedRowTimestamp = ""
 
 // noinspection JSUnusedGlobalSymbols
-mock = {
-  responseValues: [],
+let mock = {
+  responseValues: [] as string[],
   responseMap() {
     return Object.fromEntries(
         responseColumns.map((e, i) => [e, mock.responseValues[i]])
     )
   },
   summaryLine() {
-    let building = mock.responseMap()[intake.responseFieldLabels.building]
-    let area = mock.responseMap()[intake.responseFieldLabels.area]
-    let shortSummary = mock.responseMap()[intake.responseFieldLabels.element]
+    let building = mock.responseMap()[responseFieldLabels.building]
+    let area = mock.responseMap()[responseFieldLabels.area]
+    let shortSummary = mock.responseMap()[responseFieldLabels.element]
 
     return building + " " + area + ": " + shortSummary
   },
@@ -56,8 +79,29 @@ mock = {
     }
   },
 
-  /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
-  responsesSheet: {
+  responsesSheet: mockDeep<Sheet>(),
+  logSheet: mockDeep<Sheet>(),
+
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  logTimestampRange: {
+    getValue() {
+      return mock.responseLogTimestamp
+    },
+    setValue: jest.fn()
+  },
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  logIssueKeyRange: {
+    setValue: jest.fn()
+  },
+  /** @type {GoogleAppsScript.Spreadsheet.Range} */
+  logIssueLinkRange: {
+    setValue: jest.fn()
+  }
+}
+
+/*
+responsesSheet =
+ {
     _isGetResponseRange: (row, col, nRows, nCols) =>
         row === firstResponseRow && col === 1 &&
         nRows === 1 && nCols === responseColumns.length,
@@ -74,76 +118,73 @@ mock = {
         return mock.responseValueRange
       }
     }
-  },
+  }
 
-  /** @type {GoogleAppsScript.Spreadsheet.Range} */
-  logTimestampRange: {
-    getValue() {
-      return mock.responseLogTimestamp
-    },
-    setValue: jest.fn()
-  },
-  /** @type {GoogleAppsScript.Spreadsheet.Range} */
-  logIssueKeyRange: {
-    setValue: jest.fn()
-  },
-  /** @type {GoogleAppsScript.Spreadsheet.Range} */
-  logIssueLinkRange: {
-    setValue: jest.fn()
-  },
 
-  /** @type {GoogleAppsScript.Spreadsheet.Sheet} */
-  logSheet: {
-    _isTimestampCheck: (r, c) => r === firstResponseRow && c === 1,
-    _isIssueKeyCheck: (r, c) => r === firstResponseRow && c === 2,
-    _isIssueLinkCheck: (r, c) => r === firstResponseRow && c === 3,
-    getRange(row, col) {
-      if (this._isTimestampCheck(row, col)) {
-        return mock.logTimestampRange
-      }
-      if (this._isIssueKeyCheck(row, col)) {
-        return mock.logIssueKeyRange
-      }
-      if (this._isIssueLinkCheck(row, col)) {
-        return mock.logIssueLinkRange
-      }
+ */
+
+/** @type {GoogleAppsScript.Spreadsheet.Sheet}
+ logSheet: {
+  _isTimestampCheck: (r, c) => r === firstResponseRow && c === 1,
+      _isIssueKeyCheck: (r, c) => r === firstResponseRow && c === 2,
+      _isIssueLinkCheck: (r, c) => r === firstResponseRow && c === 3,
+      getRange(row, col) {
+    if (this._isTimestampCheck(row, col)) {
+      return mock.logTimestampRange
+    }
+    if (this._isIssueKeyCheck(row, col)) {
+      return mock.logIssueKeyRange
+    }
+    if (this._isIssueLinkCheck(row, col)) {
+      return mock.logIssueLinkRange
     }
   }
 }
+ */
 
-/** @type {GoogleAppsScript.Spreadsheet.SpreadsheetApp} */
-global.SpreadsheetApp = {
-  getActive: () => ({
-    getSheetByName: (name) => {
+const mockSpreadsheetApp = mockDeep<SpreadsheetApp>()
+const mockSpreadsheet = mockDeep<Spreadsheet>()
+global.SpreadsheetApp = mockSpreadsheetApp
+mockSpreadsheetApp.getActive.mockImplementation(() => mockSpreadsheet)
+mockSpreadsheet.getSheetByName.mockImplementation((name) => {
       switch (name) {
         case "Form responses 1":
           return mock.responsesSheet
         case "state-of-affairs":
           return mock.logSheet
       }
+      throw "Unexpected sheet name"
     }
-  })
-}
+)
 
-/** @type {GoogleAppsScript.Mail.MailApp} */
-global.MailApp = {
-  sendEmail: jest.fn()
+const mockMailApp = mockDeep<MailApp>()
+global.MailApp = mockMailApp
+
+type MailAppSendMail = Parameters<typeof MailApp.sendEmail>;
+
+
+type GenericIterator<F extends File | Folder> = {
+  getContinuationToken(): string,
+  hasNext(): boolean,
+  next(): F
 }
 
 // wrap value in fake iterator. Returns the same value over and over and over and over....
-iter = (value) => ({
-  next: () => value
+let iter = <F extends File | Folder>(value: F): GenericIterator<F> => ({
+  next: () => value,
+  hasNext: () => true,
+  getContinuationToken: () => ""
 })
 
 /** @type {GoogleAppsScript.Drive.DriveApp} */
 global.DriveApp = {
   getRootFolder: () => ({
-    getFoldersByName: (folderName) => {
+    getFoldersByName: (folderName: string) => {
       if (folderName === "jira") {
-        return iter({
+        return iter<Folder>({
           getFilesByName: (fileName) => {
             if (fileName === "jira-basic-auth-token") {
-              return iter({
+              return iter<File>({
                 getBlob: () => ({
                   getDataAsString: () => mock.jiraToken
                 })
@@ -156,6 +197,7 @@ global.DriveApp = {
   })
 }
 
+const mockUrlFetchApp = mockDeep<UrlFetchApp>()
 // noinspection JSUnusedLocalSymbols
 global.UrlFetchApp = {
   fetch: jest.fn((url, options) => {
@@ -170,12 +212,42 @@ global.UrlFetchApp = {
   })
 }
 
+
+type TicketParts = {
+  isUrgent: boolean,
+  summary: string
+}
+
+type EmailSpec = {
+  to: string,
+  subject: string,
+  bodyParts: BodyParts
+}
+
+declare global {
+  namespace jest {
+    // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
+    interface Matchers<R> {
+      filesJiraTicket(ticketParts: TicketParts): CustomMatcherResult,
+
+      emailBody(bodyParts: BodyParts): CustomMatcherResult,
+
+      someCallSendsEmail(e: EmailSpec): CustomMatcherResult,
+
+      callSendsEmail(e: EmailSpec): CustomMatcherResult,
+
+      toSendAllEmail(...emailSpecs: EmailSpec[]): CustomMatcherResult
+    }
+  }
+}
+
+
 expect.extend({
-  filesJiraTicket(received, ticketParts) {
-    let [url, options] = received
-    let payload = JSON.parse(options.payload)
-    let submittedBy = mock.responseMap()[intake.responseFieldLabels.reportedBy]
-    let description = mock.responseMap()[intake.responseFieldLabels.description]
+  filesJiraTicket(ctx: MatcherContext, received, ticketParts: TicketParts) {
+    const [url, options] = received
+    const payload = JSON.parse(options.payload)
+    const submittedBy = mock.responseMap()[responseFieldLabels.reportedBy]
+    const description = mock.responseMap()[responseFieldLabels.description]
 
     expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
     expect(options).toMatchObject({
@@ -183,7 +255,7 @@ expect.extend({
       "contentType": "application/json",
       "method": "post",
       headers: {
-        "content-type": "application/json",
+        "contentType": "application/json",
         "Accept": "application/json",
         "authorization": "Basic " + mock.jiraToken
       }
@@ -204,12 +276,13 @@ expect.extend({
       }
     })
     return {
-      pass: true
+      pass: true,
+      message: () => "I ain't nothing to say to you"
     }
   },
-  emailBody(received, bodyParts) {
-    let submittedBy = mock.responseMap()[intake.responseFieldLabels.reportedBy]
-    let description = mock.responseMap()[intake.responseFieldLabels.description]
+  emailBody(ctx: MatcherContext, received: string, bodyParts: BodyParts) {
+    let submittedBy = mock.responseMap()[responseFieldLabels.reportedBy]
+    let description = mock.responseMap()[responseFieldLabels.description]
 
     if (bodyParts.isUrgent) {
       expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))
@@ -227,6 +300,7 @@ expect.extend({
 
     return {
       pass: true,
+      message: () => "I ain't nothing to say to you"
     }
   },
   /**
@@ -234,8 +308,8 @@ expect.extend({
    * @param received - Jest call object
    * @param emailSpec
    */
-  callSendsEmail(received, emailSpec) {
-    let emailObject = received[0]
+  callSendsEmail(received, emailSpec: EmailSpec) {
+    const emailObject = received[0]
     expect(emailObject).toMatchObject({
       to: emailSpec.to,
       subject: emailSpec.subject,
@@ -243,6 +317,7 @@ expect.extend({
     })
     return {
       pass: true,
+      message: () => "I ain't nothing to say to you"
     }
   },
   /**
@@ -250,7 +325,7 @@ expect.extend({
    * @param received - array of jest mock calls
    * @param emailSpec - spec of a single email
    */
-  someCallSendsEmail(received, emailSpec) {
+  someCallSendsEmail(received, emailSpec: EmailSpec): CustomMatcherResult {
     let assertionErrorOrUndefined = received.map(theCall => {
       try {
         return expect(theCall).callSendsEmail(emailSpec)
@@ -275,10 +350,11 @@ expect.extend({
    * @param received - array of Jest mock calls
    * @param emailSpecs - array of email message specifications
    */
-  toSendAllEmail(received, ...emailSpecs) {
+  toSendAllEmail(received: MailAppSendMail[], ...emailSpecs): CustomMatcherResult {
     emailSpecs.map(e => expect(received).someCallSendsEmail(e));
     return {
       pass: true,
+      message: () => "I ain't nothing to say to you"
     }
   }
 })
@@ -287,7 +363,7 @@ test("End to end, urgent", () => {
   mock.responseValues = urgentResponseValues
   let timestampLike = /....-..-..T..:..:..\....Z/;
 
-  intake.toJira(null);
+  toJira(null);
 
   // verify log sheet updates
   expect(mock.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mock.restUrlBase + mock.newJiraIssueKey)
@@ -295,13 +371,13 @@ test("End to end, urgent", () => {
   expect(mock.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
   // verify jira ticket
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+  expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
     isUrgent: true,
     summary: mock.summaryLine()
   })
 
   // verify sent notifications
-  expect(global.MailApp.sendEmail.mock.calls).toSendAllEmail(
+  expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
       {
         to: 'yassaoubangoura@yahoo.fr',
         subject: 'URGENT maintenance report from Diego Briceño',
@@ -335,16 +411,16 @@ test("End to end, urgent", () => {
 test("End to end, non-urgent", () => {
   mock.responseValues = nonUrgentResponseValues
 
-  intake.toJira(null);
+  toJira(null);
 
   // verify jira ticket
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+  expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
     isUrgent: false,
     summary: mock.summaryLine()
   })
 
   // verify sent notifications
-  expect(global.MailApp.sendEmail.mock.calls).toSendAllEmail({
+  expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail({
         to: 'yassaoubangoura@yahoo.fr',
         subject: 'Maintenance report from Diego Briceño',
         bodyParts: {
@@ -365,17 +441,23 @@ test("End to end, non-urgent", () => {
   )
 })
 
+type BodyParts = {
+  recipientName: string,
+  reasonForReceiving: string,
+  isUrgent: boolean
+}
+
 test("Test-mode", () => {
   mock.responseValues = urgentResponseValues
 
-  intake.toJiraTestMode();
+  toJiraTestMode("");
 
-  expect(global.UrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+  expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
     isUrgent: true,
     summary: "TEST - " + mock.summaryLine()
   })
 
-  expect(global.MailApp.sendEmail.mock.calls).toSendAllEmail(
+  expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
       {
         to: 'frig.neutron+yassaoubangoura@gmail.com',
         subject: 'TEST - URGENT maintenance report from Diego Briceño',
@@ -392,8 +474,7 @@ test("Test-mode", () => {
           reasonForReceiving: "you are an Urgence-level responder",
           isUrgent: true
         }
-      },
-      {
+      }, {
         to: 'frig.neutron+shkosi@gmail.com',
         subject: 'TEST - URGENT maintenance report from Diego Briceño',
         bodyParts: {
@@ -401,6 +482,5 @@ test("Test-mode", () => {
           reasonForReceiving: "you are a triage responder",
           isUrgent: true
         }
-      }
-  )
+      })
 })

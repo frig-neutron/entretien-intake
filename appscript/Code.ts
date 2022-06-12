@@ -13,7 +13,7 @@ let columnIndex: { [k: string]: number }
 let jiraBasicAuthToken: string
 const jiraPriorityUrgent = "Urgent"
 const jiraPriorityMedium = "Medium"
-const responseFieldLabels = {
+const responseFieldLabels: {[label: string]: string} = {
   building: "Bâtiment",
   element: "Elément",
   description: "Description",
@@ -104,6 +104,7 @@ function toJira(e: any) {
 }
 
 // ENTRY POINT FOR TEST MODE
+// noinspection JSUnusedLocalSymbols
 function toJiraTestMode(e: any) {
   inTestMode = true
   for (const role in roleDirectory){
@@ -225,7 +226,7 @@ function mark(ticketRowIndex: number, columnIndex: number, value: any) {
 
 type DirectoryEntry = {name: string, email: string}
 
-let roleDirectory: {[role: string|number]: DirectoryEntry[]} = {
+const roleDirectory: {[role: string|number]: DirectoryEntry[]} = {
   3735: [
     {"name": "Luis", "email": "luis.chepen+intake@gmail.com"},
   ],
@@ -342,10 +343,13 @@ function loadJiraBasicAuthToken(): string {
   return blob.getDataAsString().trim();
 }
 
-// for testing
-if (typeof module !== 'undefined') {
-  module.exports.toJira = toJira
-  module.exports.toJiraTestMode = toJiraTestMode
-  module.exports.roleDirectory = roleDirectory
-  module.exports.responseFieldLabels = responseFieldLabels
-}
+export {toJira, toJiraTestMode, responseFieldLabels, roleDirectory}
+/**
+ * n// for testing
+ * if (typeof module !== 'undefined') {
+ *   module.exports.toJira = toJira
+ *   module.exports.toJiraTestMode = toJiraTestMode
+ *   module.exports.roleDirectory = roleDirectory
+ *   module.exports.responseFieldLabels = responseFieldLabels
+ * }
+ */
