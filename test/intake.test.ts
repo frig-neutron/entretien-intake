@@ -335,24 +335,38 @@ expect.extend({
    * @param emailSpec - spec of a single email
    */
   someCallSendsEmail(received: MailAppSendMail[], emailSpec: EmailSpec): CustomMatcherResult {
-    let assertionErrorOrUndefined = received.map(theCall => {
+    type ErrOrMatchResult = CustomMatcherResult | Error
+    const requireError = (e: unknown): Error => {
+      if (e instanceof Error)
+        return e
+      else
+        throw Error(`${e} should be of type Error, but it was something else`)
+    }
+
+    const assertionErrorOrUndefined: ErrOrMatchResult[] = received.map(theCall => {
       try {
         return expect(theCall).callSendsEmail(emailSpec)
-      } catch (assertionError) {
-        return assertionError
+      } catch (assertionError: unknown) {
+        return requireError(assertionError)
       }
     })
-    let isSuccess = (e: any): boolean => typeof e == "undefined" // no error == success
-    let matchSuccesses = assertionErrorOrUndefined.map(isSuccess);
-    let atLeastOneMatch = matchSuccesses.filter((i: any) => i).length > 0
+
+    const isSuccess = (e: any): boolean => typeof e == "undefined" // no error == success
+    const atLeastOneMatch = assertionErrorOrUndefined.map(isSuccess).filter((i: boolean) => i).length > 0
+    const getMessage = (e: ErrOrMatchResult) => {
+      if (e instanceof Error) {
+        return e.message
+      } else {
+        return e.message()
+      }
+    }
+
+    const isFailure = (e: any): boolean => !isSuccess(e)
+    const failures = assertionErrorOrUndefined.filter(isFailure);
     return {
       pass: atLeastOneMatch,
       message: () => {
-        const isFailure = (e: any): boolean => !isSuccess(e)
-        const matchFailures: string[] = assertionErrorOrUndefined.filter(isFailure).map(
-            // @ts-ignore // todo: debug and set the type
-            (e: { message: () => string }) => e.message()
-        )
+        const matchFailures: string[] = failures.map(getMessage)
         return `No email matches spec ${JSON.stringify(emailSpec, null, 2)}\n` + matchFailures.join("\n")
       }
     }
