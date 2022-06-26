@@ -1,6 +1,5 @@
 import {toJira, toJiraTestMode} from "../appscript/Code"
 import {mock} from "jest-mock-extended";
-import {DeepPartial} from "ts-essentials";
 import MailApp = GoogleAppsScript.Mail.MailApp;
 import SpreadsheetApp = GoogleAppsScript.Spreadsheet.SpreadsheetApp;
 import Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet;
@@ -203,7 +202,7 @@ const mockDriveApp = mock<DriveApp>({
 global.DriveApp = mockDriveApp
 
 const mockUrlFetchApp = mock<UrlFetchApp>({
-  fetch(url: string): HTTPResponse {
+  fetch: jest.fn((url: string): HTTPResponse => {
     return mock<HTTPResponse>({
           getContentText() {
             return JSON.stringify({
@@ -213,7 +212,7 @@ const mockUrlFetchApp = mock<UrlFetchApp>({
           }
         }
     )
-  }
+  })
 })
 
 // noinspection JSUnusedLocalSymbols
@@ -253,7 +252,7 @@ declare global {
 
 
 expect.extend({
-  filesJiraTicket(ctx: MatcherContext, received, ticketParts: TicketParts) {
+  filesJiraTicket(received, ticketParts: TicketParts) {
     const [url, options] = received
     const payload = JSON.parse(options.payload)
     const submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
@@ -318,7 +317,7 @@ expect.extend({
    * @param received - Jest call object
    * @param emailSpec
    */
-  callSendsEmail(received: MailAppSendMail, emailSpec: EmailSpec) {
+  callSendsEmail(received: MailAppSendMail, emailSpec: EmailSpec): CustomMatcherResult {
     const emailObject = received[0]
     expect(emailObject).toMatchObject({
       to: emailSpec.to,
