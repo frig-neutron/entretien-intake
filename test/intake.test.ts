@@ -6,7 +6,6 @@ import Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet;
 import Sheet = GoogleAppsScript.Spreadsheet.Sheet;
 import Folder = GoogleAppsScript.Drive.Folder;
 import File = GoogleAppsScript.Drive.File;
-import MatcherContext = jest.MatcherContext;
 import UrlFetchApp = GoogleAppsScript.URL_Fetch.UrlFetchApp;
 import CustomMatcherResult = jest.CustomMatcherResult;
 import DriveApp = GoogleAppsScript.Drive.DriveApp;
@@ -51,7 +50,6 @@ let nonUrgentResponseValues = [
 let firstResponseRow = 2
 let unprocessedRowTimestamp = ""
 
-// noinspection JSUnusedGlobalSymbols
 let mocks = {
   responseValues: [] as string[],
   responseMap() {
@@ -168,7 +166,6 @@ global.MailApp = mockMailApp
 
 type MailAppSendMail = Parameters<typeof MailApp.sendEmail>;
 
-
 type GenericIterator<F extends File | Folder> = {
   getContinuationToken(): string,
   hasNext(): boolean,
@@ -235,22 +232,28 @@ type BodyParts = {
   isUrgent: boolean
 }
 
+interface EmailMatchers {
+  someCallSendsEmail(e: EmailSpec): CustomMatcherResult,
+
+  callSendsEmail(e: EmailSpec): CustomMatcherResult,
+
+  toSendAllEmail(...emailSpecs: EmailSpec[]): CustomMatcherResult
+
+  emailBodyContainsParts(bodyParts: BodyParts): CustomMatcherResult
+}
+
+interface TicketMatchers {
+  filesJiraTicket(ticketParts: TicketParts): CustomMatcherResult,
+}
+
 declare global {
   namespace jest {
     // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
-    interface Matchers<R> {
-      filesJiraTicket(ticketParts: TicketParts): CustomMatcherResult,
-
-      someCallSendsEmail(e: EmailSpec): CustomMatcherResult,
-
-      callSendsEmail(e: EmailSpec): CustomMatcherResult,
-
-      toSendAllEmail(...emailSpecs: EmailSpec[]): CustomMatcherResult
+    interface Matchers<R> extends EmailMatchers, TicketMatchers{
     }
 
     // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
-    interface Expect {
-      emailBody(bodyParts: BodyParts): CustomMatcherResult
+    interface Expect extends EmailMatchers{
     }
   }
 }
@@ -294,7 +297,7 @@ expect.extend({
       message: () => "I ain't nothing to say to you"
     }
   },
-  emailBody(received: string, bodyParts: BodyParts) {
+  emailBody(received: string, bodyParts: BodyParts): CustomMatcherResult {
     let submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
     let description = mocks.responseMap()[responseFieldLabels.description]
 
@@ -327,7 +330,7 @@ expect.extend({
     expect(emailObject).toMatchObject({
       to: emailSpec.to,
       subject: emailSpec.subject,
-      body: expect.emailBody(emailSpec.bodyParts)
+      body: expect.emailBodyContainsParts(emailSpec.bodyParts)
     })
     return {
       pass: true,
@@ -445,13 +448,11 @@ describe("intake logic", () => {
 
     toJira(null);
 
-    // verify jira ticket
     expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
       isUrgent: false,
       summary: mocks.summaryLine()
     })
 
-    // verify sent notifications
     expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail({
           to: 'yassaoubangoura@yahoo.fr',
           subject: 'Maintenance report from Diego Briceño',
