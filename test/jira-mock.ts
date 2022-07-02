@@ -90,7 +90,7 @@ function mockTheUrlFetchApp(issueKey: string, issueRestUrl: string) {
 }
 
 function mockDriveApp(apiToken: string) {
-  return  mock<DriveApp>({
+  return mock<DriveApp>({
     getRootFolder: () => mock<Folder>({
       getFoldersByName: (folderName: string) => mock<GoogleAppsScript.Drive.FolderIterator>(
           folderName !== "jira"
