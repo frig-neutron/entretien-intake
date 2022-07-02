@@ -218,7 +218,6 @@ const mockUrlFetchApp = mock<UrlFetchApp>({
 // noinspection JSUnusedLocalSymbols
 global.UrlFetchApp = mockUrlFetchApp
 
-
 type TicketParts = {
   isUrgent: boolean,
   summary: string

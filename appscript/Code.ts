@@ -187,7 +187,7 @@ function sendOne(ticketContext: TicketContext): HTTPResponse {
   const payload: string = JSON.stringify(ticketContext.jiraTicket);
   const url = "https://lalliance.atlassian.net/rest/api/latest/issue"
   const headers: HttpHeaders = {
-    "content-type": "application/json",
+    "contentType": "application/json",
     "Accept": "application/json",
     "authorization": "Basic " + jiraBasicAuthToken
   };
