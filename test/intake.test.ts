@@ -6,7 +6,7 @@ import {mockSheetsApp} from "./mock/sheets";
 describe("intake end-to-end", () => {
 
   describe("urgent", () => {
-    const urgentResponseValues = responses([
+    const responseValues = responses([
       "28/03/2021 16:01:17",
       "L'eau chaude ne marche pas",
       "3737",
@@ -17,10 +17,10 @@ describe("intake end-to-end", () => {
     ])
 
     test("End to end, urgent", () => {
-      const resp = urgentResponseValues
-      const sheets = mockSheetsApp(resp)
-      const jira = mockJira(resp);
-      const mailApp = mockMailApp(resp)
+      const sheets = mockSheetsApp(responseValues)
+      const jira = mockJira(responseValues);
+      const mailApp = mockMailApp(responseValues)
+
 
       const timestampLike = /....-..-..T..:..:..\....Z/;
 
@@ -65,10 +65,9 @@ describe("intake end-to-end", () => {
       )
     })
     test("Test-mode", () => {
-      const resp = urgentResponseValues
-      mockSheetsApp(resp)
-      const jira = mockJira(resp);
-      const mailApp = mockMailApp(resp)
+      mockSheetsApp(responseValues)
+      const jira = mockJira(responseValues);
+      const mailApp = mockMailApp(responseValues)
 
       toJiraTestMode("");
 
@@ -110,7 +109,7 @@ describe("intake end-to-end", () => {
   })
 
   describe("non-urgent", () => {
-    const nonUrgentResponseValues = responses([
+    const responseValues = responses([
       "28/03/2021 16:01:17",
       "L'eau chaude ne marche pas",
       "3737",
@@ -121,10 +120,9 @@ describe("intake end-to-end", () => {
     ])
 
     test("End to end, non-urgent", () => {
-      const resp = nonUrgentResponseValues
-      mockSheetsApp(resp)
-      const jira = mockJira(resp);
-      const mailApp = mockMailApp(resp)
+      mockSheetsApp(responseValues)
+      const jira = mockJira(responseValues);
+      const mailApp = mockMailApp(responseValues)
 
       toJira(null);
 
@@ -154,6 +152,10 @@ describe("intake end-to-end", () => {
     })
   })
 })
+
+function mockery(resp: Responses) {
+  return [mockSheetsApp(resp), mockJira(resp), mockMailApp(resp)]
+}
 
 export type Responses = ReturnType<typeof responses>
 
