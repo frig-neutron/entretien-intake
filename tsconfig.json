@@ -1,0 +1,20 @@
+{
+  "extends": "./node_modules/gts/tsconfig-google.json",
+  "compilerOptions": {
+    "types": [
+      // have to exclude node types
+      "@types/google-apps-script",
+      "@types/jest"
+    ],
+    "esModuleInterop": true,
+    "lib": [
+      "es2019", // flatmap support
+    ],
+    "rootDir": ".",
+    "outDir": "build"
+  },
+  "include": [
+    "appscript/*",
+    "test/*"
+  ]
+}

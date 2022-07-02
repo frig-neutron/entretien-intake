@@ -7,6 +7,7 @@
 
 set -eu
 CLASP_JSON=./appscript/.clasp.json
+CLASP_PACKAGE_JSON=./appscript/package.json
 
 function verify_invocation() {
   test -d appscript || {
@@ -23,15 +24,30 @@ function verify_args() {
   }
 }
 
-function link_clasp_config() {
+function create_clasp_config() {
   cp ./deploy/clasp.json-"$ENV" $CLASP_JSON
   # shellcheck disable=SC2064
   trap "rm -f -- $CLASP_JSON" EXIT
 }
 
+function create_clasp_package_json() {
+  # Clasp doesn't work if you try deploy w/o a package.json if you use typescript  
+  # Even though it shouldn't care. This is a bug.
+  # https://github.com/google/clasp/issues/875
+  #
+  # I can't leave my regular package.json in there though b/c that creates a 
+  # node_modules dir, and .claspignore is broken so I can't exclude it. 
+  # Also a bug.
+  # https://github.com/google/clasp/issues/67 
+  cp ./deploy/clasp.package.json $CLASP_PACKAGE_JSON
+  # shellcheck disable=SC2064
+  trap "rm -f -- $CLASP_PACKAGE_JSON" EXIT
+}
+
 verify_invocation
 verify_args
-link_clasp_config
+create_clasp_config
+create_clasp_package_json
 
 (
   cd ./appscript
