@@ -229,6 +229,12 @@ type EmailSpec = {
   bodyParts: BodyParts
 }
 
+type BodyParts = {
+  recipientName: string,
+  reasonForReceiving: string,
+  isUrgent: boolean
+}
+
 declare global {
   namespace jest {
     // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
@@ -384,128 +390,124 @@ expect.extend({
   }
 })
 
-test("End to end, urgent", () => {
-  mocks.responseValues = urgentResponseValues
-  let timestampLike = /....-..-..T..:..:..\....Z/;
+describe("intake logic", () => {
+  test("End to end, urgent", () => {
+    mocks.responseValues = urgentResponseValues
+    let timestampLike = /....-..-..T..:..:..\....Z/;
 
-  toJira(null);
+    toJira(null);
 
-  // verify log sheet updates
-  expect(mocks.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mocks.restUrlBase + mocks.newJiraIssueKey)
-  expect(mocks.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mocks.newJiraIssueKey)
-  expect(mocks.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
+    // verify log sheet updates
+    expect(mocks.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mocks.restUrlBase + mocks.newJiraIssueKey)
+    expect(mocks.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mocks.newJiraIssueKey)
+    expect(mocks.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
-  // verify jira ticket
-  expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
-    isUrgent: true,
-    summary: mocks.summaryLine()
+    // verify jira ticket
+    expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+      isUrgent: true,
+      summary: mocks.summaryLine()
+    })
+
+    // verify sent notifications
+    expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
+        {
+          to: 'yassaoubangoura@yahoo.fr',
+          subject: 'URGENT maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Moussa",
+            reasonForReceiving: "you are a building representative for 3737",
+            isUrgent: true
+          }
+        },
+        {
+          to: 'mgutkowska2+intake@gmail.com',
+          subject: 'URGENT maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Monica",
+            reasonForReceiving: "you are an Urgence-level responder",
+            isUrgent: true
+          }
+        },
+        {
+          to: 'shkosi@hotmail.com',
+          subject: 'URGENT maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Kosai",
+            reasonForReceiving: "you are a triage responder",
+            isUrgent: true
+          }
+        }
+    )
   })
 
-  // verify sent notifications
-  expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
-      {
-        to: 'yassaoubangoura@yahoo.fr',
-        subject: 'URGENT maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Moussa",
-          reasonForReceiving: "you are a building representative for 3737",
-          isUrgent: true
-        }
-      },
-      {
-        to: 'mgutkowska2+intake@gmail.com',
-        subject: 'URGENT maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Monica",
-          reasonForReceiving: "you are an Urgence-level responder",
-          isUrgent: true
-        }
-      },
-      {
-        to: 'shkosi@hotmail.com',
-        subject: 'URGENT maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Kosai",
-          reasonForReceiving: "you are a triage responder",
-          isUrgent: true
-        }
-      }
-  )
-})
+  test("End to end, non-urgent", () => {
+    mocks.responseValues = nonUrgentResponseValues
 
-test("End to end, non-urgent", () => {
-  mocks.responseValues = nonUrgentResponseValues
+    toJira(null);
 
-  toJira(null);
+    // verify jira ticket
+    expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+      isUrgent: false,
+      summary: mocks.summaryLine()
+    })
 
-  // verify jira ticket
-  expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
-    isUrgent: false,
-    summary: mocks.summaryLine()
+    // verify sent notifications
+    expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail({
+          to: 'yassaoubangoura@yahoo.fr',
+          subject: 'Maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Moussa",
+            reasonForReceiving: "you are a building representative for 3737",
+            isUrgent: false
+          }
+        },
+        {
+          to: 'shkosi@hotmail.com',
+          subject: 'Maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Kosai",
+            reasonForReceiving: "you are a triage responder",
+            isUrgent: false
+          }
+        }
+    )
   })
 
-  // verify sent notifications
-  expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail({
-        to: 'yassaoubangoura@yahoo.fr',
-        subject: 'Maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Moussa",
-          reasonForReceiving: "you are a building representative for 3737",
-          isUrgent: false
-        }
-      },
-      {
-        to: 'shkosi@hotmail.com',
-        subject: 'Maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Kosai",
-          reasonForReceiving: "you are a triage responder",
-          isUrgent: false
-        }
-      }
-  )
-})
+  test("Test-mode", () => {
+    mocks.responseValues = urgentResponseValues
 
-type BodyParts = {
-  recipientName: string,
-  reasonForReceiving: string,
-  isUrgent: boolean
-}
+    toJiraTestMode("");
 
-test("Test-mode", () => {
-  mocks.responseValues = urgentResponseValues
+    expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+      isUrgent: true,
+      summary: "TEST - " + mocks.summaryLine()
+    })
 
-  toJiraTestMode("");
-
-  expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
-    isUrgent: true,
-    summary: "TEST - " + mocks.summaryLine()
+    expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
+        {
+          to: 'frig.neutron+yassaoubangoura@gmail.com',
+          subject: 'TEST - URGENT maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Moussa",
+            reasonForReceiving: "you are a building representative for 3737",
+            isUrgent: true
+          }
+        }, {
+          to: 'frig.neutron+mgutkowska2+intake@gmail.com',
+          subject: 'TEST - URGENT maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Monica",
+            reasonForReceiving: "you are an Urgence-level responder",
+            isUrgent: true
+          }
+        }, {
+          to: 'frig.neutron+shkosi@gmail.com',
+          subject: 'TEST - URGENT maintenance report from Diego Briceño',
+          bodyParts: {
+            recipientName: "Kosai",
+            reasonForReceiving: "you are a triage responder",
+            isUrgent: true
+          }
+        })
   })
-
-  expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
-      {
-        to: 'frig.neutron+yassaoubangoura@gmail.com',
-        subject: 'TEST - URGENT maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Moussa",
-          reasonForReceiving: "you are a building representative for 3737",
-          isUrgent: true
-        }
-      }, {
-        to: 'frig.neutron+mgutkowska2+intake@gmail.com',
-        subject: 'TEST - URGENT maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Monica",
-          reasonForReceiving: "you are an Urgence-level responder",
-          isUrgent: true
-        }
-      }, {
-        to: 'frig.neutron+shkosi@gmail.com',
-        subject: 'TEST - URGENT maintenance report from Diego Briceño',
-        bodyParts: {
-          recipientName: "Kosai",
-          reasonForReceiving: "you are a triage responder",
-          isUrgent: true
-        }
-      })
 })
