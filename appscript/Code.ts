@@ -344,12 +344,3 @@ function loadJiraBasicAuthToken(): string {
 }
 
 export {toJira, toJiraTestMode, responseFieldLabels, roleDirectory}
-/**
- * n// for testing
- * if (typeof module !== 'undefined') {
- *   module.exports.toJira = toJira
- *   module.exports.toJiraTestMode = toJiraTestMode
- *   module.exports.roleDirectory = roleDirectory
- *   module.exports.responseFieldLabels = responseFieldLabels
- * }
- */

@@ -1,4 +1,4 @@
-import {toJira, toJiraTestMode} from "../appscript/Code"
+import {responseFieldLabels, toJira, toJiraTestMode} from "../appscript/Code"
 import {mock} from "jest-mock-extended";
 import MailApp = GoogleAppsScript.Mail.MailApp;
 import SpreadsheetApp = GoogleAppsScript.Spreadsheet.SpreadsheetApp;
@@ -15,15 +15,6 @@ import HTTPResponse = GoogleAppsScript.URL_Fetch.HTTPResponse;
 import Integer = GoogleAppsScript.Integer;
 import Range = GoogleAppsScript.Spreadsheet.Range;
 
-// todo: remove this, duplicated from Code.ts b/c I can't get it to import
-const responseFieldLabels: { [label: string]: string } = {
-  building: "Bâtiment",
-  element: "Elément",
-  description: "Description",
-  area: "Zone",
-  reportedBy: "Rapporté par",
-  priority: "Priorité"
-}
 
 declare var global: typeof globalThis; // can't use @types/node
 
