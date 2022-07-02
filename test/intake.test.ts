@@ -21,7 +21,6 @@ declare var global: typeof globalThis; // can't use @types/node
 const responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
 
 const firstResponseRow = 2
-const unprocessedRowTimestamp = ""
 
 const responseSheet = {
   responseValues: [] as string[],
@@ -32,32 +31,80 @@ const responseSheet = {
   }
 }
 
-const logSheet = {
-  responseLogTimestamp: unprocessedRowTimestamp,
-  timestampRange: mock<Range>({
+const logSheet = function () {
+  const unprocessedRowTimestamp = ""
+  const issueLinkRange = mock<Range>()
+  const timestampRange = mock<Range>({
     getValue(): any {
-      return logSheet.responseLogTimestamp
+      return unprocessedRowTimestamp
     }
-  }),
-  issueKeyRange: mock<Range>(),
-  issueLinkRange: mock<Range>()
-}
+  })
+  const issueKeyRange = mock<Range>()
 
-const jira = {
-  issueKey: "ISSUE-" + Math.random(),
-  apiToken: "tok-" + Math.random(),
-  restUrlBase: "https://lalliance.atlassian.net/mockrest/",
-  issueRestUrl: function () {
-    return this.restUrlBase + this.issueKey
-  },
-  summaryLine() {
-    const building = responseSheet.responseMap()[responseFieldLabels.building]
-    const area = responseSheet.responseMap()[responseFieldLabels.area]
-    const shortSummary = responseSheet.responseMap()[responseFieldLabels.element]
+  return {
+    mockSheet(): Sheet {
+      return mock<Sheet>({
+            getRange(row: string | Integer, col?): Range {
 
-    return building + " " + area + ": " + shortSummary
+              const _isTimestampCheck = row === firstResponseRow && col === 1
+              if (_isTimestampCheck) {
+                return timestampRange
+              }
+
+              const _isIssueKeyCheck = row === firstResponseRow && col === 2
+              if (_isIssueKeyCheck) {
+                return issueKeyRange
+              }
+
+              const _isIssueLinkCheck = row === firstResponseRow && col === 3
+              if (_isIssueLinkCheck) {
+                return issueLinkRange
+              }
+              throw `Unexpected getRange call to the log sheet ${row}, ${col}}`
+            }
+          }
+      )
+    },
+    assertJiraUrlSetTo(url: string) {
+      expect(issueLinkRange.setValue.mock.calls[0][0]).toEqual(url)
+    },
+    assertJiraIssueKeySetTo(issueKey: string) {
+      expect(issueKeyRange.setValue.mock.calls[0][0]).toEqual(issueKey)
+    },
+    assertProcessTimestampMatches(timestampLike: RegExp) {
+      expect(timestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
+    }
+  }
+}()
+
+function jiraMock() {
+  const restUrlBase = "https://lalliance.atlassian.net/mockrest/";
+
+  return {
+    issueKey: "ISSUE-" + Math.random(),
+    apiToken: "tok-" + Math.random(),
+    issueRestUrl: function () {
+      return restUrlBase + this.issueKey
+    },
+    summaryLine() {
+      const building = responseSheet.responseMap()[responseFieldLabels.building]
+      const area = responseSheet.responseMap()[responseFieldLabels.area]
+      const shortSummary = responseSheet.responseMap()[responseFieldLabels.element]
+
+      return building + " " + area + ": " + shortSummary
+    },
+    assertTicketCreated(t: Partial<TicketParts>) {
+
+      expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+        isUrgent: t.isUrgent!,
+        summary: this.summaryLine(),
+        ...t // override summary if provided in arg
+      })
+    }
   }
 }
+
+const jira = jiraMock();
 
 global.SpreadsheetApp = mock<SpreadsheetApp>({
   getActive() {
@@ -67,7 +114,7 @@ global.SpreadsheetApp = mock<SpreadsheetApp>({
           case "Form responses 1":
             return mockResponseSheet()
           case "state-of-affairs":
-            return mockLogSheet()
+            return logSheet.mockSheet()
         }
         throw "Unexpected sheet name"
       }
@@ -113,29 +160,6 @@ function mockResponseSheet() {
   })
 }
 
-function mockLogSheet(): Sheet {
-  return mock<Sheet>({
-        getRange(row: string | Integer, col?): Range {
-
-          const _isTimestampCheck = row === firstResponseRow && col === 1
-          if (_isTimestampCheck) {
-            return logSheet.timestampRange
-          }
-
-          const _isIssueKeyCheck = row === firstResponseRow && col === 2
-          if (_isIssueKeyCheck) {
-            return logSheet.issueKeyRange
-          }
-
-          const _isIssueLinkCheck = row === firstResponseRow && col === 3
-          if (_isIssueLinkCheck) {
-            return logSheet.issueLinkRange
-          }
-          throw `Unexpected getRange call to the log sheet ${row}, ${col}}`
-        }
-      }
-  )
-}
 
 const mockMailApp = mock<MailApp>()
 global.MailApp = mockMailApp
@@ -225,11 +249,11 @@ interface TicketMatchers {
 declare global {
   namespace jest {
     // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
-    interface Matchers<R> extends EmailMatchers, TicketMatchers{
+    interface Matchers<R> extends EmailMatchers, TicketMatchers {
     }
 
     // noinspection JSUnusedGlobalSymbols - need this to give expect matcher hints
-    interface Expect extends EmailMatchers{
+    interface Expect extends EmailMatchers {
     }
   }
 }
@@ -386,16 +410,11 @@ describe("intake logic", () => {
 
     toJira(null);
 
-    // verify log sheet updates
-    expect(logSheet.issueLinkRange.setValue.mock.calls[0][0]).toEqual(jira.issueRestUrl())
-    expect(logSheet.issueKeyRange.setValue.mock.calls[0][0]).toEqual(jira.issueKey)
-    expect(logSheet.timestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
+    logSheet.assertJiraUrlSetTo(jira.issueRestUrl())
+    logSheet.assertJiraIssueKeySetTo(jira.issueKey)
+    logSheet.assertProcessTimestampMatches(timestampLike)
 
-    // verify jira ticket
-    expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
-      isUrgent: true,
-      summary: jira.summaryLine()
-    })
+    jira.assertTicketCreated({isUrgent: true})
 
     // verify sent notifications
     expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
@@ -442,10 +461,7 @@ describe("intake logic", () => {
     responseSheet.responseValues = nonUrgentResponseValues
     toJira(null);
 
-    expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
-      isUrgent: false,
-      summary: jira.summaryLine()
-    })
+    jira.assertTicketCreated({isUrgent: false})
 
     expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail({
           to: 'yassaoubangoura@yahoo.fr',
@@ -473,7 +489,7 @@ describe("intake logic", () => {
 
     toJiraTestMode("");
 
-    expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
+    jira.assertTicketCreated({
       isUrgent: true,
       summary: "TEST - " + jira.summaryLine()
     })
