@@ -294,7 +294,7 @@ expect.extend({
       message: () => "I ain't nothing to say to you"
     }
   },
-  emailBody(ctx: MatcherContext, received: string, bodyParts: BodyParts) {
+  emailBody(received: string, bodyParts: BodyParts) {
     let submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
     let description = mocks.responseMap()[responseFieldLabels.description]
 
