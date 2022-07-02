@@ -18,66 +18,9 @@ import Range = GoogleAppsScript.Spreadsheet.Range;
 
 declare var global: typeof globalThis; // can't use @types/node
 
-const responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
-
 const firstResponseRow = 2
 
-const responseSheet = {
-  responseValues: [] as string[],
-  responseMap() {
-    return Object.fromEntries(
-        responseColumns.map((e, i) => [e, responseSheet.responseValues[i]])
-    )
-  }
-}
-
-const logSheet = function () {
-  const unprocessedRowTimestamp = ""
-  const issueLinkRange = mock<Range>()
-  const timestampRange = mock<Range>({
-    getValue(): any {
-      return unprocessedRowTimestamp
-    }
-  })
-  const issueKeyRange = mock<Range>()
-
-  return {
-    mockSheet(): Sheet {
-      return mock<Sheet>({
-            getRange(row: string | Integer, col?): Range {
-
-              const _isTimestampCheck = row === firstResponseRow && col === 1
-              if (_isTimestampCheck) {
-                return timestampRange
-              }
-
-              const _isIssueKeyCheck = row === firstResponseRow && col === 2
-              if (_isIssueKeyCheck) {
-                return issueKeyRange
-              }
-
-              const _isIssueLinkCheck = row === firstResponseRow && col === 3
-              if (_isIssueLinkCheck) {
-                return issueLinkRange
-              }
-              throw `Unexpected getRange call to the log sheet ${row}, ${col}}`
-            }
-          }
-      )
-    },
-    assertJiraUrlSetTo(url: string) {
-      expect(issueLinkRange.setValue.mock.calls[0][0]).toEqual(url)
-    },
-    assertJiraIssueKeySetTo(issueKey: string) {
-      expect(issueKeyRange.setValue.mock.calls[0][0]).toEqual(issueKey)
-    },
-    assertProcessTimestampMatches(timestampLike: RegExp) {
-      expect(timestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
-    }
-  }
-}()
-
-function jiraMock() {
+function mockJira() {
   const restUrlBase = "https://lalliance.atlassian.net/mockrest/";
 
   return {
@@ -87,9 +30,9 @@ function jiraMock() {
       return restUrlBase + this.issueKey
     },
     summaryLine() {
-      const building = responseSheet.responseMap()[responseFieldLabels.building]
-      const area = responseSheet.responseMap()[responseFieldLabels.area]
-      const shortSummary = responseSheet.responseMap()[responseFieldLabels.element]
+      const building = sheets.responseValue(responseFieldLabels.building)
+      const area = sheets.responseValue(responseFieldLabels.area)
+      const shortSummary = sheets.responseValue(responseFieldLabels.element)
 
       return building + " " + area + ": " + shortSummary
     },
@@ -104,62 +47,130 @@ function jiraMock() {
   }
 }
 
-const jira = jiraMock();
+const jira = mockJira();
 
-global.SpreadsheetApp = mock<SpreadsheetApp>({
-  getActive() {
-    return mock<Spreadsheet>({
-      getSheetByName(name: string) {
-        switch (name) {
-          case "Form responses 1":
-            return mockResponseSheet()
-          case "state-of-affairs":
-            return logSheet.mockSheet()
-        }
-        throw "Unexpected sheet name"
+function mockSheets() {
+  const logSheet = function() {
+    const unprocessedRowTimestamp = ""
+    const issueLinkRange = mock<Range>()
+    const timestampRange = mock<Range>({
+      getValue(): any {
+        return unprocessedRowTimestamp
       }
     })
-  }
-})
+    const issueKeyRange = mock<Range>()
 
-function mockResponseSheet() {
-  return mock<Sheet>({
-    getLastColumn(): Integer {
-      return responseColumns.length
-    },
-    getLastRow(): Integer {
-      return firstResponseRow
-    },
-    getRange(row: string | Integer, column?: Integer, numRows?: Integer, numColumns?: Integer): Range {
+    return {
+      mock(): Sheet {
+        return mock<Sheet>({
+              getRange(row: string | Integer, col?): Range {
 
-      const _isGetResponseRange = (row: Integer, col: Integer, nRows: Integer, nCols: Integer) =>
-          row === firstResponseRow && col === 1 &&
-          nRows === 1 && nCols === responseColumns.length;
-      const _isGetHeaderRange = (row: Integer, col: Integer, nRows: Integer, nCols: Integer) =>
-          row === 1 && col === 1 &&
-          nRows === 1 && nCols === responseColumns.length;
+                const _isTimestampCheck = row === firstResponseRow && col === 1
+                if (_isTimestampCheck) {
+                  return timestampRange
+                }
 
-      if (column && numRows && numColumns && numColumns && typeof row == "number") {
-        if (_isGetHeaderRange(row, column, numRows, numColumns)) {
-          return mock<Range>({
-            getValues() {
-              return [responseColumns]
+                const _isIssueKeyCheck = row === firstResponseRow && col === 2
+                if (_isIssueKeyCheck) {
+                  return issueKeyRange
+                }
+
+                const _isIssueLinkCheck = row === firstResponseRow && col === 3
+                if (_isIssueLinkCheck) {
+                  return issueLinkRange
+                }
+                throw `Unexpected getRange call to the log sheet ${row}, ${col}}`
+              }
             }
-          })
-        }
-        if (_isGetResponseRange(row, column, numRows, numColumns)) {
-          return mock<Range>({
-            getValues() {
-              return [responseSheet.responseValues]
-            }
-          })
-        }
+        )
+      },
+      assertJiraUrlSetTo(url: string) {
+        expect(issueLinkRange.setValue.mock.calls[0][0]).toEqual(url)
+      },
+      assertJiraIssueKeySetTo(issueKey: string) {
+        expect(issueKeyRange.setValue.mock.calls[0][0]).toEqual(issueKey)
+      },
+      assertProcessTimestampMatches(timestampLike: RegExp) {
+        expect(timestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
       }
-      throw `Not a header or response range: ${row}, ${column}, ${numRows}, ${numColumns}`
+    }
+  }()
+
+  const responseSheet = function() {
+    const responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
+
+    return {
+      responseValues: [] as string[],
+      responseValue(column: string) {
+        return Object.fromEntries(
+            responseColumns.map((e, i) => [e, this.responseValues[i]])
+        )[column]
+      },
+      mock() {
+        const alsoThis = this;
+        return mock<Sheet>({
+          getLastColumn(): Integer {
+            return responseColumns.length
+          },
+          getLastRow(): Integer {
+            return firstResponseRow
+          },
+          getRange(row: string | Integer, column?: Integer, numRows?: Integer, numColumns?: Integer): Range {
+
+            const _isGetResponseRange = (row: Integer, col: Integer, nRows: Integer, nCols: Integer) =>
+                row === firstResponseRow && col === 1 &&
+                nRows === 1 && nCols === responseColumns.length;
+            const _isGetHeaderRange = (row: Integer, col: Integer, nRows: Integer, nCols: Integer) =>
+                row === 1 && col === 1 &&
+                nRows === 1 && nCols === responseColumns.length;
+
+            if (column && numRows && numColumns && numColumns && typeof row == "number") {
+              if (_isGetHeaderRange(row, column, numRows, numColumns)) {
+                return mock<Range>({
+                  getValues() {
+                    return [responseColumns]
+                  }
+                })
+              }
+              if (_isGetResponseRange(row, column, numRows, numColumns)) {
+                return mock<Range>({
+                  getValues() {
+                    return [alsoThis.responseValues]
+                  }
+                })
+              }
+            }
+            throw `Not a header or response range: ${row}, ${column}, ${numRows}, ${numColumns}`
+          }
+        })
+      }
+    };
+  }()
+
+  global.SpreadsheetApp = mock<SpreadsheetApp>({
+    getActive() {
+      return mock<Spreadsheet>({
+        getSheetByName(name: string) {
+          switch (name) {
+            case "Form responses 1":
+              return responseSheet.mock()
+            case "state-of-affairs":
+              return logSheet.mock()
+          }
+          throw "Unexpected sheet name"
+        }
+      })
     }
   })
+
+  return {
+    logSheet: logSheet,
+    responseSheet: responseSheet,
+    responseValue: responseSheet.responseValue
+  }
 }
 
+const sheets = mockSheets();
 
 const mockMailApp = mock<MailApp>()
 global.MailApp = mockMailApp
@@ -263,8 +274,8 @@ expect.extend({
   filesJiraTicket(received, ticketParts: TicketParts) {
     const [url, options] = received
     const payload = JSON.parse(options.payload)
-    const submittedBy = responseSheet.responseMap()[responseFieldLabels.reportedBy]
-    const description = responseSheet.responseMap()[responseFieldLabels.description]
+    const submittedBy = sheets.responseValue(responseFieldLabels.reportedBy)
+    const description = sheets.responseValue(responseFieldLabels.description)
 
     expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
     expect(options).toMatchObject({
@@ -298,8 +309,8 @@ expect.extend({
     }
   },
   emailBodyContainsParts(received: string, bodyParts: BodyParts): CustomMatcherResult {
-    const submittedBy = responseSheet.responseMap()[responseFieldLabels.reportedBy]
-    const description = responseSheet.responseMap()[responseFieldLabels.description]
+    const submittedBy = sheets.responseValue(responseFieldLabels.reportedBy)
+    const description = sheets.responseValue(responseFieldLabels.description)
 
     if (bodyParts.isUrgent) {
       expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))
@@ -405,14 +416,14 @@ describe("intake logic", () => {
   ]
 
   test("End to end, urgent", () => {
-    responseSheet.responseValues = urgentResponseValues
+    sheets.responseSheet.responseValues = urgentResponseValues
     const timestampLike = /....-..-..T..:..:..\....Z/;
 
     toJira(null);
 
-    logSheet.assertJiraUrlSetTo(jira.issueRestUrl())
-    logSheet.assertJiraIssueKeySetTo(jira.issueKey)
-    logSheet.assertProcessTimestampMatches(timestampLike)
+    sheets.logSheet.assertJiraUrlSetTo(jira.issueRestUrl())
+    sheets.logSheet.assertJiraIssueKeySetTo(jira.issueKey)
+    sheets.logSheet.assertProcessTimestampMatches(timestampLike)
 
     jira.assertTicketCreated({isUrgent: true})
 
@@ -458,7 +469,7 @@ describe("intake logic", () => {
     "chauffe-eau"
   ]
   test("End to end, non-urgent", () => {
-    responseSheet.responseValues = nonUrgentResponseValues
+    sheets.responseSheet.responseValues = nonUrgentResponseValues
     toJira(null);
 
     jira.assertTicketCreated({isUrgent: false})
@@ -485,7 +496,7 @@ describe("intake logic", () => {
   })
 
   test("Test-mode", () => {
-    responseSheet.responseValues = urgentResponseValues
+    sheets.responseSheet.responseValues = urgentResponseValues
 
     toJiraTestMode("");
 
