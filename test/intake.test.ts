@@ -27,8 +27,8 @@ const responseFieldLabels: { [label: string]: string } = {
 
 declare var global: typeof globalThis; // can't use @types/node
 
-let responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
-let urgentResponseValues = [
+const responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
+const urgentResponseValues = [
   "28/03/2021 16:01:17",
   "L'eau chaude ne marche pas",
   "3737",
@@ -37,7 +37,7 @@ let urgentResponseValues = [
   "Diego Briceño",
   "chauffe-eau"
 ]
-let nonUrgentResponseValues = [
+const nonUrgentResponseValues = [
   "28/03/2021 16:01:17",
   "L'eau chaude ne marche pas",
   "3737",
@@ -47,10 +47,10 @@ let nonUrgentResponseValues = [
   "chauffe-eau"
 ]
 
-let firstResponseRow = 2
-let unprocessedRowTimestamp = ""
+const firstResponseRow = 2
+const unprocessedRowTimestamp = ""
 
-let mocks = {
+const mocks = {
   responseValues: [] as string[],
   responseMap() {
     return Object.fromEntries(
@@ -58,9 +58,9 @@ let mocks = {
     )
   },
   summaryLine() {
-    let building = mocks.responseMap()[responseFieldLabels.building]
-    let area = mocks.responseMap()[responseFieldLabels.area]
-    let shortSummary = mocks.responseMap()[responseFieldLabels.element]
+    const building = mocks.responseMap()[responseFieldLabels.building]
+    const area = mocks.responseMap()[responseFieldLabels.area]
+    const shortSummary = mocks.responseMap()[responseFieldLabels.element]
 
     return building + " " + area + ": " + shortSummary
   },
@@ -173,7 +173,7 @@ type GenericIterator<F extends File | Folder> = {
 }
 
 // wrap value in fake iterator. Returns the same value over and over and over and over....
-let iter = <F extends File | Folder>(value: F): GenericIterator<F> => ({
+const iter = <F extends File | Folder>(value: F): GenericIterator<F> => ({
   next: () => value,
   hasNext: () => true,
   getContinuationToken: () => ""
@@ -297,9 +297,9 @@ expect.extend({
       message: () => "I ain't nothing to say to you"
     }
   },
-  emailBody(received: string, bodyParts: BodyParts): CustomMatcherResult {
-    let submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
-    let description = mocks.responseMap()[responseFieldLabels.description]
+  emailBodyContainsParts(received: string, bodyParts: BodyParts): CustomMatcherResult {
+    const submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
+    const description = mocks.responseMap()[responseFieldLabels.description]
 
     if (bodyParts.isUrgent) {
       expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))
@@ -396,7 +396,7 @@ expect.extend({
 describe("intake logic", () => {
   test("End to end, urgent", () => {
     mocks.responseValues = urgentResponseValues
-    let timestampLike = /....-..-..T..:..:..\....Z/;
+    const timestampLike = /....-..-..T..:..:..\....Z/;
 
     toJira(null);
 
