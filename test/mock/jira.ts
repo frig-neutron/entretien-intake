@@ -1,5 +1,5 @@
-import {responseFieldLabels} from "../appscript/Code";
-import {Responses} from "./intake.test";
+import {responseFieldLabels} from "../../appscript/Code";
+import {Responses} from "../intake.test";
 import {mock} from "jest-mock-extended";
 import UrlFetchApp = GoogleAppsScript.URL_Fetch.UrlFetchApp;
 import HTTPResponse = GoogleAppsScript.URL_Fetch.HTTPResponse;

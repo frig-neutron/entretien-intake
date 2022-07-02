@@ -1,5 +1,5 @@
 import {mock} from "jest-mock-extended";
-import {Responses} from "./intake.test";
+import {Responses} from "../intake.test";
 import SpreadsheetApp = GoogleAppsScript.Spreadsheet.SpreadsheetApp;
 import Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet;
 import Sheet = GoogleAppsScript.Spreadsheet.Sheet;
