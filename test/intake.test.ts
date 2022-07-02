@@ -19,59 +19,44 @@ import Range = GoogleAppsScript.Spreadsheet.Range;
 declare var global: typeof globalThis; // can't use @types/node
 
 const responseColumns = ["Timestamp", "Description", "Bâtiment", "Zone", "Priorité", "Rapporté par", "Elément"]
-const urgentResponseValues = [
-  "28/03/2021 16:01:17",
-  "L'eau chaude ne marche pas",
-  "3737",
-  "Sous-sol",
-  "Urgent (à régler dans les prochaines 24 heures / to be repaired in the next 24 hours)",
-  "Diego Briceño",
-  "chauffe-eau"
-]
-const nonUrgentResponseValues = [
-  "28/03/2021 16:01:17",
-  "L'eau chaude ne marche pas",
-  "3737",
-  "Sous-sol",
-  "Régulier (ça peut être régler dans plus de 24 heures / can be solved in more that 24 hours)",
-  "Diego Briceño",
-  "chauffe-eau"
-]
 
 const firstResponseRow = 2
 const unprocessedRowTimestamp = ""
 
-const mocks = {
+const responseSheet = {
   responseValues: [] as string[],
   responseMap() {
     return Object.fromEntries(
-        responseColumns.map((e, i) => [e, mocks.responseValues[i]])
+        responseColumns.map((e, i) => [e, responseSheet.responseValues[i]])
     )
-  },
-  summaryLine() {
-    const building = mocks.responseMap()[responseFieldLabels.building]
-    const area = mocks.responseMap()[responseFieldLabels.area]
-    const shortSummary = mocks.responseMap()[responseFieldLabels.element]
+  }
+}
 
-    return building + " " + area + ": " + shortSummary
-  },
+const logSheet = {
   responseLogTimestamp: unprocessedRowTimestamp,
-  restUrlBase: "https://lalliance.atlassian.net/mockrest/",
-  jiraToken: "tok-" + Math.random(),
-  newJiraIssueKey: "ISSUE-" + Math.random(),
-
-  responsesSheet: mock<Sheet>(),
-
-  /** @type {GoogleAppsScript.Spreadsheet.Range} */
-  logTimestampRange: mock<Range>({
+  timestampRange: mock<Range>({
     getValue(): any {
-      return mocks.responseLogTimestamp
+      return logSheet.responseLogTimestamp
     }
   }),
-  /** @type {GoogleAppsScript.Spreadsheet.Range} */
-  logIssueKeyRange: mock<Range>(),
-  /** @type {GoogleAppsScript.Spreadsheet.Range} */
-  logIssueLinkRange: mock<Range>()
+  issueKeyRange: mock<Range>(),
+  issueLinkRange: mock<Range>()
+}
+
+const jira = {
+  issueKey: "ISSUE-" + Math.random(),
+  apiToken: "tok-" + Math.random(),
+  restUrlBase: "https://lalliance.atlassian.net/mockrest/",
+  issueRestUrl: function () {
+    return this.restUrlBase + this.issueKey
+  },
+  summaryLine() {
+    const building = responseSheet.responseMap()[responseFieldLabels.building]
+    const area = responseSheet.responseMap()[responseFieldLabels.area]
+    const shortSummary = responseSheet.responseMap()[responseFieldLabels.element]
+
+    return building + " " + area + ": " + shortSummary
+  }
 }
 
 global.SpreadsheetApp = mock<SpreadsheetApp>({
@@ -80,9 +65,9 @@ global.SpreadsheetApp = mock<SpreadsheetApp>({
       getSheetByName(name: string) {
         switch (name) {
           case "Form responses 1":
-            return responseSheet()
+            return mockResponseSheet()
           case "state-of-affairs":
-            return logSheet()
+            return mockLogSheet()
         }
         throw "Unexpected sheet name"
       }
@@ -90,7 +75,7 @@ global.SpreadsheetApp = mock<SpreadsheetApp>({
   }
 })
 
-function responseSheet() {
+function mockResponseSheet() {
   return mock<Sheet>({
     getLastColumn(): Integer {
       return responseColumns.length
@@ -118,7 +103,7 @@ function responseSheet() {
         if (_isGetResponseRange(row, column, numRows, numColumns)) {
           return mock<Range>({
             getValues() {
-              return [mocks.responseValues]
+              return [responseSheet.responseValues]
             }
           })
         }
@@ -128,23 +113,23 @@ function responseSheet() {
   })
 }
 
-function logSheet(): Sheet {
+function mockLogSheet(): Sheet {
   return mock<Sheet>({
         getRange(row: string | Integer, col?): Range {
 
           const _isTimestampCheck = row === firstResponseRow && col === 1
           if (_isTimestampCheck) {
-            return mocks.logTimestampRange
+            return logSheet.timestampRange
           }
 
           const _isIssueKeyCheck = row === firstResponseRow && col === 2
           if (_isIssueKeyCheck) {
-            return mocks.logIssueKeyRange
+            return logSheet.issueKeyRange
           }
 
           const _isIssueLinkCheck = row === firstResponseRow && col === 3
           if (_isIssueLinkCheck) {
-            return mocks.logIssueLinkRange
+            return logSheet.issueLinkRange
           }
           throw `Unexpected getRange call to the log sheet ${row}, ${col}}`
         }
@@ -179,7 +164,7 @@ const mockDriveApp = mock<DriveApp>({
               getFilesByName: (fileName: string) => iter<File>(
                   mock<File>({
                     getBlob: () => mock<Blob>({
-                      getDataAsString: () => fileName === "jira-basic-auth-token" ? mocks.jiraToken : "WRONG TOKEN"
+                      getDataAsString: () => fileName === "jira-basic-auth-token" ? jira.apiToken : "WRONG TOKEN"
                     })
                   })
               )
@@ -190,12 +175,12 @@ const mockDriveApp = mock<DriveApp>({
 global.DriveApp = mockDriveApp
 
 const mockUrlFetchApp = mock<UrlFetchApp>({
-  fetch: jest.fn((url: string): HTTPResponse => {
+  fetch: jest.fn((): HTTPResponse => {
     return mock<HTTPResponse>({
           getContentText() {
             return JSON.stringify({
-              key: mocks.newJiraIssueKey,
-              self: mocks.restUrlBase + mocks.newJiraIssueKey,
+              key: jira.issueKey,
+              self: jira.issueRestUrl(),
             })
           }
         }
@@ -254,8 +239,8 @@ expect.extend({
   filesJiraTicket(received, ticketParts: TicketParts) {
     const [url, options] = received
     const payload = JSON.parse(options.payload)
-    const submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
-    const description = mocks.responseMap()[responseFieldLabels.description]
+    const submittedBy = responseSheet.responseMap()[responseFieldLabels.reportedBy]
+    const description = responseSheet.responseMap()[responseFieldLabels.description]
 
     expect(url).toEqual("https://lalliance.atlassian.net/rest/api/latest/issue")
     expect(options).toMatchObject({
@@ -265,7 +250,7 @@ expect.extend({
       headers: {
         "contentType": "application/json",
         "Accept": "application/json",
-        "authorization": "Basic " + mocks.jiraToken
+        "authorization": "Basic " + jira.apiToken
       }
     })
     expect(payload).toMatchObject({
@@ -289,8 +274,8 @@ expect.extend({
     }
   },
   emailBodyContainsParts(received: string, bodyParts: BodyParts): CustomMatcherResult {
-    const submittedBy = mocks.responseMap()[responseFieldLabels.reportedBy]
-    const description = mocks.responseMap()[responseFieldLabels.description]
+    const submittedBy = responseSheet.responseMap()[responseFieldLabels.reportedBy]
+    const description = responseSheet.responseMap()[responseFieldLabels.description]
 
     if (bodyParts.isUrgent) {
       expect(received).toMatch(new RegExp(submittedBy + " has submitted an URGENT maintenance report"))
@@ -298,11 +283,11 @@ expect.extend({
       expect(received).toMatch(new RegExp(submittedBy + " has submitted a maintenance report"))
     }
     expect(received).toMatch(new RegExp("^Dear " + bodyParts.recipientName))
-    expect(received).toMatch(new RegExp(mocks.summaryLine() + "\n" + description))
+    expect(received).toMatch(new RegExp(jira.summaryLine() + "\n" + description))
     expect(received).toMatch(new RegExp("You are receiving this email because " + bodyParts.reasonForReceiving))
     expect(received).toMatch(new RegExp(
         "Jira ticket "
-        + "https://lalliance.atlassian.net/browse/" + mocks.newJiraIssueKey
+        + "https://lalliance.atlassian.net/browse/" + jira.issueKey
         + " has been assigned to this report"
     ))
 
@@ -385,21 +370,31 @@ expect.extend({
 })
 
 describe("intake logic", () => {
+  const urgentResponseValues = [
+    "28/03/2021 16:01:17",
+    "L'eau chaude ne marche pas",
+    "3737",
+    "Sous-sol",
+    "Urgent (à régler dans les prochaines 24 heures / to be repaired in the next 24 hours)",
+    "Diego Briceño",
+    "chauffe-eau"
+  ]
+
   test("End to end, urgent", () => {
-    mocks.responseValues = urgentResponseValues
+    responseSheet.responseValues = urgentResponseValues
     const timestampLike = /....-..-..T..:..:..\....Z/;
 
     toJira(null);
 
     // verify log sheet updates
-    expect(mocks.logIssueLinkRange.setValue.mock.calls[0][0]).toEqual(mocks.restUrlBase + mocks.newJiraIssueKey)
-    expect(mocks.logIssueKeyRange.setValue.mock.calls[0][0]).toEqual(mocks.newJiraIssueKey)
-    expect(mocks.logTimestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
+    expect(logSheet.issueLinkRange.setValue.mock.calls[0][0]).toEqual(jira.issueRestUrl())
+    expect(logSheet.issueKeyRange.setValue.mock.calls[0][0]).toEqual(jira.issueKey)
+    expect(logSheet.timestampRange.setValue.mock.calls[0][0]).toMatch(timestampLike)
 
     // verify jira ticket
     expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
       isUrgent: true,
-      summary: mocks.summaryLine()
+      summary: jira.summaryLine()
     })
 
     // verify sent notifications
@@ -434,14 +429,22 @@ describe("intake logic", () => {
     )
   })
 
+  const nonUrgentResponseValues = [
+    "28/03/2021 16:01:17",
+    "L'eau chaude ne marche pas",
+    "3737",
+    "Sous-sol",
+    "Régulier (ça peut être régler dans plus de 24 heures / can be solved in more that 24 hours)",
+    "Diego Briceño",
+    "chauffe-eau"
+  ]
   test("End to end, non-urgent", () => {
-    mocks.responseValues = nonUrgentResponseValues
-
+    responseSheet.responseValues = nonUrgentResponseValues
     toJira(null);
 
     expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
       isUrgent: false,
-      summary: mocks.summaryLine()
+      summary: jira.summaryLine()
     })
 
     expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail({
@@ -466,13 +469,13 @@ describe("intake logic", () => {
   })
 
   test("Test-mode", () => {
-    mocks.responseValues = urgentResponseValues
+    responseSheet.responseValues = urgentResponseValues
 
     toJiraTestMode("");
 
     expect(mockUrlFetchApp.fetch.mock.calls[0]).filesJiraTicket({
       isUrgent: true,
-      summary: "TEST - " + mocks.summaryLine()
+      summary: "TEST - " + jira.summaryLine()
     })
 
     expect(mockMailApp.sendEmail.mock.calls).toSendAllEmail(
