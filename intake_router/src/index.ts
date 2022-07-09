@@ -4,7 +4,7 @@ import {log} from "./logger";
 import {smtpSender} from "./sendmail";
 import {Announcement} from "./announcement";
 import {HttpFunction, Request} from "@google-cloud/functions-framework/build/src/functions";
-import {Response} from "express";
+import {Response, application, json, text} from "express";
 
 
 process.on('uncaughtException', function (err) {
@@ -17,7 +17,8 @@ const envResult = dotenv_config()
 // Absolutely MUST use the 3-param version b/c otherwise there seems to be no way to terminate the function properly.
 // Returning a resolved Promise doesn't cut it - you still get "Finished with status: response error"
 const sendmail: HttpFunction = async (req: Request, res: Response) => {
-  // log.info(`Starting with data=${JSON.stringify(data)}`)
+  application.use(text())
+  log.info(`Starting with data=${JSON.stringify(req.body)}, headers=${JSON.stringify(req.rawHeaders)}`)
 }
 
 
