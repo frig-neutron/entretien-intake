@@ -1,0 +1,7 @@
+# TypeScript
+build/
+
+.env
+.DS_Store
+coverage
+
