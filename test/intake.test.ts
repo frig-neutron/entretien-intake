@@ -153,10 +153,6 @@ describe("intake end-to-end", () => {
   })
 })
 
-function mockery(resp: Responses) {
-  return [mockSheetsApp(resp), mockJira(resp), mockMailApp(resp)]
-}
-
 export type Responses = ReturnType<typeof responses>
 
 function responses(rowValues: string[]) {
