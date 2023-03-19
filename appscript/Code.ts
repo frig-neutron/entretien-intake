@@ -242,7 +242,6 @@ function referenceRoleDirectory(): { [role: string | number]: DirectoryEntry[] }
       {"name": "Moussa", "email": "yassaoubangoura@yahoo.fr"},
     ],
     3739: [
-      {"name": "Kris", "email": "kris.onishi@mcgill.ca"},
     ],
     3743: [
       {"name": "Monika", "email": "mgutkowska2+intake@gmail.com"},
@@ -255,6 +254,7 @@ function referenceRoleDirectory(): { [role: string | number]: DirectoryEntry[] }
     ],
     triage: [
       {"name": "Kosai", "email": "shkosi@hotmail.com"},
+      {"name": "Kris", "email": "kris.onishi@mcgill.ca"},
       {"name": "Diego B", "email": "cuibafilms+intake@gmail.com"},
       {"name": "Entretien committee mailbox", "email": "entretienlalliance+intake@gmail.com"},
     ]
