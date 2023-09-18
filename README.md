@@ -1,3 +1,7 @@
+# DEPRECATED
+
+⚠️ This repository is deprecated. Functionality moved to https://github.com/frig-neutron/entretien-announce/tree/master/intake_form
+
 # Maintenance intake scripts
 
 Scripts that handle conversion of maintenance intake form responses into Jira tickets.
